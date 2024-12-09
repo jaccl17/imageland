@@ -1,3 +1,14 @@
+# %% [markdown]
+
+## Fast Fourier Transform (2) for filtering and processing images
+# The primary goal of this exploration is to develop a script that moves a 2D array (ie: an image) into fourier space. with the pixel arrays (rows and columns) translated to frequencies, I can apply thresholds and masks to filter out noise,
+# highlight geometries, and reconstruct the images to illuminate difficult-to-see defects
+#
+# This is similar to a DCT but allows me filter asymmetric signals, fitler in phase space, and work with negtive signals.
+#%% [markdown]
+
+### Import libaries and packages
+# %%
 import numpy as np
 import argparse
 from scipy import stats as st
@@ -6,20 +17,11 @@ import matplotlib.pyplot as plt
 
 from skimage import io, img_as_ubyte
 
-T_D = 28 
-F_D = 4
-S_D = 0
+# %% [markdown]
 
-# angles = [0,5,10,15,20,25,30,35,40,45,50,55,60,65,70,75,80,85,90]
-# angles = [0, 10, 20, 30, 40, 50, 60, 70, 80, 90]
-angles = np.arange(0,84,3)
+### FFT function definitions
 
-thickness = 60
-
-def save_as_png(array, filename):
-    normalized_array = (array - np.min(array)) / (np.max(array) - np.min(array))
-    uint8_array = img_as_ubyte(normalized_array)
-    io.imsave(filename, uint8_array)
+# %%
 
 def apply_fft2(image):
     # fft2_image = np.real(fft2(image, axes=(0,1)))
@@ -32,14 +34,20 @@ def rebuild_image(fft2_image):
     ifft2_image = ifft2(fft2_image, axes=(0,1))
     return ifft2_image
 
+# %% [markdown]
+
+### Filter functions (called with terminal args)
+
+# %%
+
 def star_filter(dct_image, angle, thickness):
     u_max, v_max = dct_image.shape
     center_u, center_v = u_max // 2, v_max // 2
     mask = np.zeros_like(dct_image, dtype=bool)
     theta = np.radians(angle)
 
-    u_values = np.arange(center_u, u_max).reshape(-1, 1)  # Column vector for u coordinates
-    v_values = np.arange(center_v, v_max).reshape(1, -1)  # Row vector for v coordinates
+    u_values = np.arange(center_u, u_max).reshape(-1, 1)  
+    v_values = np.arange(center_v, v_max).reshape(1, -1) 
 
     if theta == np.pi / 4:
         m = 1
@@ -66,8 +74,7 @@ def star_filter(dct_image, angle, thickness):
 
     mask[center_u:, center_v:] = condition_upper & condition_lower
 
-    # Adjust reflections for non-square arrays
-    mask[:center_u, :] = np.flip(mask[center_u + (u_max % 2):, :], axis=0)  # Correct the reflection when u_max is odd
+    mask[:center_u, :] = np.flip(mask[center_u + (u_max % 2):, :], axis=0)  # correct the reflection when u_max is odd
     mask[:, :center_v] = np.flip(mask[:, center_v + (v_max % 2):], axis=1)
 
     return mask
@@ -76,8 +83,8 @@ def filter_box(fft2_image, width, height):
     u_max, v_max = fft2_image.shape
     mask = np.zeros_like(fft2_image, dtype=bool)
 
-    u_values = np.arange(u_max).reshape(-1, 1)  # Column vector
-    v_values = np.arange(v_max).reshape(1, -1)  # Row vector
+    u_values = np.arange(u_max).reshape(-1, 1) 
+    v_values = np.arange(v_max).reshape(1, -1)
 
     u_center = u_max / 2
     v_center = v_max / 2
@@ -91,7 +98,8 @@ def filter_box(fft2_image, width, height):
 
 
 def filter(fft2_image, filter_type, width, height, T_D, S_D, F_D):
-    magnitude_spectrum = np.log1p((np.abs(fft2_image))**2)
+    magnitude_spectrum = np.log1p((np.abs(fft2_image)))
+    phase_spectrum = np.angle(fft2_image)
     threshold_mask = np.zeros_like(fft2_image, dtype=bool)
     total_mask = np.zeros_like(fft2_image, dtype=bool)
     filtered_fft2 = np.zeros_like(fft2_image)
@@ -100,7 +108,7 @@ def filter(fft2_image, filter_type, width, height, T_D, S_D, F_D):
     if filter_type == 'box':
         box_mask = filter_box(fft2_image, width, height)
 
-        filtered_fft2[box_mask] = np.max(magnitude_spectrum) + 0.1 # Set frequency values in the band to 0
+        filtered_fft2[box_mask] = np.max(magnitude_spectrum) + 0.1 
         filtered_fft2[~box_mask] = fft2_image[~box_mask]
 
         filtered_magspec[box_mask] = np.max(magnitude_spectrum) + 0.1
@@ -146,7 +154,7 @@ def filter(fft2_image, filter_type, width, height, T_D, S_D, F_D):
             angle_mask = star_filter(fft2_image,angle,thickness)
             star_mask |= angle_mask
 
-        filtered_fft2[star_mask] = np.max(magnitude_spectrum) + 0.1 # Set frequency values in the band to 0
+        filtered_fft2[star_mask] = np.max(magnitude_spectrum) + 0.1
         filtered_fft2[~star_mask] = fft2_image[~star_mask]
 
         filtered_magspec[star_mask] = np.max(magnitude_spectrum) + 0.1
@@ -162,55 +170,88 @@ def filter(fft2_image, filter_type, width, height, T_D, S_D, F_D):
         threshold_mask = (magnitude_spectrum <= F_D) | (magnitude_spectrum >= T_D) # sets all cells that meet this condition (elimination condition) as TRUE
         tot =  threshold_mask & star_mask
 
-        filtered_fft2[tot] = np.max(magnitude_spectrum) + 0.1 # Set frequency values in the band to 0
+        filtered_fft2[tot] = np.max(magnitude_spectrum) + 0.1
         filtered_fft2[~tot] = fft2_image[~tot]
 
         filtered_magspec[tot] = np.max(magnitude_spectrum) + 0.1
         filtered_magspec[~tot] = magnitude_spectrum[~tot]
 
-    return magnitude_spectrum, filtered_fft2, filtered_magspec
+    return magnitude_spectrum, filtered_fft2, filtered_magspec, phase_spectrum
+
+#%% [markdown]
+
+### Overhaul and Save Image functions
+#  The first function reads the input image, applies the transforms and filter(s), rebuilds and outputs the raw + new image
+#  as well as the filtered + non-filtered magnitude spectrum
+
+#  The second function just allows for an array to be saved as a png
+
+# %%
 
 def overhaul(image_path, filter_type, width, height):
     image = io.imread(image_path, as_gray=True)
     fft2_image = apply_fft2(image)
-    magnitude_spectrum, filtered_fft2, filtered_magspec = filter(fft2_image, filter_type, width, height, T_D, S_D, F_D)
+    magnitude_spectrum, filtered_fft2, filtered_magspec, phase_spectrum = filter(fft2_image, filter_type, width, height, T_D, S_D, F_D)
     filtered_image = rebuild_image(filtered_fft2)
     # print(filtered_image)
-    return fft2_image, magnitude_spectrum, filtered_fft2, filtered_magspec, filtered_image
+    return fft2_image, magnitude_spectrum, filtered_fft2, filtered_magspec, filtered_image, phase_spectrum
+
+def save_as_png(array, filename):
+    normalized_array = (array - np.min(array)) / (np.max(array) - np.min(array))
+    uint8_array = img_as_ubyte(normalized_array)
+    io.imsave(filename, uint8_array)
+
+#%% [markdown]
+
+## Main
+#  sets up the parser, defines image paths and variables, and outputs graphs + images
+
+# %%
 
 if __name__ == "__main__":
+
+    image_path1 = '/home/unitx/Downloads/macbook_images/grid2.jpg'
+    image_path2 = '/home/unitx/Downloads/macbook_images/doublebarlight_03_cropped.png'
+
+    T_D = 28 
+    F_D = 4
+    S_D = 0
+
+    # angles = [0,5,10,15,20,25,30,35,40,45,50,55,60,65,70,75,80,85,90]
+    # angles = [0, 10, 20, 30, 40, 50, 60, 70, 80, 90]
+    angles = np.arange(0,84,3)
+
+    thickness = 60
+
     parser = argparse.ArgumentParser(description='FFT2 image filtering')
     parser.add_argument('filter_type', choices=['box', 'threshold', 'both', 'none', 'star', 'starhold'], help="Type of filter to apply: 'box', 'threshold', 'both' or 'none'")
     parser.add_argument('-wd', '--width', help="This is relevent for 'box' and 'both' filters; select a width to apply the filter at each given angle", type=int)
     parser.add_argument('-ht', '--height', help="This is relevent for 'box' and 'both' filters; select a width to apply the filter at each given angle", type=int)
     args = parser.parse_args()
 
-    image_path1 = '/home/unitx/Downloads/macbook_images/grid2.jpg'
-    image_path2 = '/home/unitx/Downloads/macbook_images/doublebarlight_03_cropped.png'
-
-    fft2_01, magnitude_spectrum_01, filtered_fft2_01, filtered_magspec_01, filtered_01 = overhaul(image_path1, args.filter_type, args.width, args.height)
-    fft2_02, magnitude_spectrum_02, filtered_fft2_02, filtered_magspec_02, filtered_02 = overhaul(image_path2, args.filter_type, args.width, args.height)
+    fft2_01, magnitude_spectrum_01, filtered_fft2_01, filtered_magspec_01, filtered_01, phase_spectrum01 = overhaul(image_path1, args.filter_type, args.width, args.height)
+    # fft2_02, magnitude_spectrum_02, filtered_fft2_02, filtered_magspec_02, filtered_02, phase_spectrum02 = overhaul(image_path2, args.filter_type, args.width, args.height)
 
     round_magspec_01 = np.round(magnitude_spectrum_01, 5)
     flat_round_magspec_01 = round_magspec_01.flatten()
 
-    round_magspec_02 = np.round(magnitude_spectrum_02, 5)
-    flat_round_magspec_02 = round_magspec_02.flatten()
+    # round_magspec_02 = np.round(magnitude_spectrum_02, 5)
+    # flat_round_magspec_02 = round_magspec_02.flatten()
 
     image1 = io.imread(image_path1, as_gray=True)
-    image2 = io.imread(image_path2, as_gray=True)
+    # image2 = io.imread(image_path2, as_gray=True)
 
     # Plotting
-    fig1, axes1 = plt.subplots(2, 4, figsize=(33, 18), gridspec_kw={'width_ratios': [1, 1, 1, 1]})
+    fig1, axes1 = plt.subplots(2, 3, figsize=(33, 18), gridspec_kw={'width_ratios': [1, 1, 1]})
 
     im1 = axes1[0, 0].imshow(image1, cmap='gray')
-    axes1[0, 0].set_title('raw_lens1')
+    axes1[0, 0].set_title('Raw Image')
 
-    im2 = axes1[0, 1].imshow(np.abs(filtered_01), cmap='gray')
-    axes1[0, 1].set_title('filtered_lens1')
+    im2 = axes1[0, 1].imshow(np.abs(phase_spectrum01), cmap='gray')
+    axes1[0, 1].set_title('Phase Spectrum')
 
     im3 = axes1[0, 2].imshow(np.abs(magnitude_spectrum_01), cmap='gray')
-    axes1[0, 2].set_title('FFT2_lens1')
+    axes1[0, 2].set_title('Magnitude Spectrum')
 
     im4 = axes1[0, 3].imshow(np.abs(filtered_magspec_01), cmap='gray')
     axes1[0, 3].set_title('filtered_FFT2_lens1')
