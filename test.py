@@ -1,7 +1,6 @@
 # %% [markdown]
-# # Title
+# # Average Top Artists
 #
-# Some text
 # %%
 import numpy as np
 # %%
@@ -18,11 +17,10 @@ worst_rank2 = max(spotify.values(), default=0) + 1
 
 averaged_rankings = {}
 for artists in all_artists:
-    rank1 = apple_music.get(artists, worst_rank1)  # Default to worst rank if missing
-    rank2 = spotify.get(artists, worst_rank2)  # Default to worst rank if missing
+    rank1 = apple_music.get(artists, worst_rank1)
+    rank2 = spotify.get(artists, worst_rank2) 
     averaged_rankings[artists] = (rank1 + rank2) / 2
 
-# Sort fruits by their averaged rankings
 overall_ranking = sorted(averaged_rankings.items(), key=lambda x: x[1])
 # %%
 print("Overall Ranking:")
