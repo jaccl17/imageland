@@ -38,13 +38,15 @@
 
 ##  Features
 
-**Pseudo-Bi-directional Empirical Mode Decomposition (BEMD):** This is a applies a 1D Empircal Mode Decomposition to the rows of a 2D array and then to the column of the decomposed matrix - this can be scaled to higher N-dimensional matrices. I include a BEMB library-based functionality as well as a my own BEMB process. More information can be found <a href="https://en.wikipedia.org/wiki/Multidimensional_empirical_mode_decomposition">here</a> 
+**Neural Networks (/nn):** Here I have placed basic examples of image classification neural networks, including data sorting, in the form of a '.py' and '.ipynb'
 
-**Discrete Cosine Transformation (DCT):** This transformation operates on the entire 2D array at once and deconstructs the row and column signals into a series of cosine functions. From this cosine space, one can filter an image by feature angle (0-90deg) as well as scale (px-Mpx). More information can he found here <a href="https://en.wikipedia.org/wiki/Discrete_cosine_transform">here</a>
+**Pseudo-Bi-directional Empirical Mode Decomposition (/BEMD):** This is a applies a 1D Empircal Mode Decomposition to the rows of a 2D array and then to the column of the decomposed matrix - this can be scaled to higher N-dimensional matrices. I include a BEMB library-based functionality as well as a my own BEMB process. More information can be found <a href="https://en.wikipedia.org/wiki/Multidimensional_empirical_mode_decomposition">here</a> 
 
-**Fast Fourier Transform (FFT):** This type of transformation is similar to DCT in that the 2D array is mapped into frequency space, however the FFT allows for filtering based on phase as well as magnitude. More information can he found here <a href="https://en.wikipedia.org/wiki/Fast_Fourier_transform">here</a> 
+**Discrete Cosine Transformation (/DCT):** This transformation operates on the entire 2D array at once and deconstructs the row and column signals into a series of cosine functions. From this cosine space, one can filter an image by feature angle (0-90deg) as well as scale (px-Mpx). More information can he found here <a href="https://en.wikipedia.org/wiki/Discrete_cosine_transform">here</a>
 
-**Image Stacking:** This is a very simple script that performs stacking by mean, median, or weighted mean on a series of images.
+**Fast Fourier Transform (/FFT):** This type of transformation is similar to DCT in that the 2D array is mapped into frequency space, however the FFT allows for filtering based on phase as well as magnitude. More information can he found here <a href="https://en.wikipedia.org/wiki/Fast_Fourier_transform">here</a> 
+
+**Image Stacking (/image_stacking):** This is a very simple script that performs stacking by mean, median, or weighted mean on a series of images.
 
 ---
 
