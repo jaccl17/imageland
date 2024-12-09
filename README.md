@@ -245,7 +245,7 @@ All explorations have their own folder. Each folder contains a test script and/o
 ##  Project Roadmap
 
 - [X] **`Task 1`**: <strike>Develop repo to organize scripts.</strike>
-- [X] **`Task 2`**: <strike>Comment and polish scripts (organize into code chunks)</strike>
+- [X] **`Task 2`**: <strike>Comment and polish scripts (organize into code chunks).</strike>
 - [ ] **`Task 3`**: Combine tools into a single program.
 - [ ] **`Task 4`**: Build downloadable UI.
 
