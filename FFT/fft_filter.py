@@ -31,8 +31,21 @@ def apply_fft2(image):
 
 def rebuild_image(fft2_image):
     # ifft2_image = np.real(ifft2(fft2_image, axes=(0,1)))
-    ifft2_image = ifft2(fft2_image, axes=(0,1))
+    ifft2_image = ifft2(fft2_image)
     return ifft2_image
+
+def rebuild_image_specs(magnitude_spectrum, phase_spectrum):
+    complex_spectrum = magnitude_spectrum * np.exp(1j * phase_spectrum)
+    unshifted_fft2_image = np.fft.ifftshift(complex_spectrum)
+    ifft2_image = ifft2(unshifted_fft2_image)
+    return ifft2_image
+
+
+def spectrum_extract(fft2_image):
+    magnitude_spectrum = np.abs(fft2_image) # for filtering
+    log_magnitude_spectrum = np.log1p((np.abs(fft2_image))) # for visualization
+    phase_spectrum = np.angle(fft2_image) # for filtering
+    return magnitude_spectrum, log_magnitude_spectrum, phase_spectrum
 
 # %% [markdown]
 
@@ -97,86 +110,71 @@ def filter_box(fft2_image, width, height):
     return mask
 
 
-def filter(fft2_image, filter_type, width, height, T_D, S_D, F_D):
-    magnitude_spectrum = np.log1p((np.abs(fft2_image)))
-    phase_spectrum = np.angle(fft2_image)
-    threshold_mask = np.zeros_like(fft2_image, dtype=bool)
-    total_mask = np.zeros_like(fft2_image, dtype=bool)
-    filtered_fft2 = np.zeros_like(fft2_image)
-    filtered_magspec = np.zeros_like(fft2_image)
+def filter(raw_spectrum, filter_type, width, height, T_D, S_D, F_D):
+    threshold_mask = np.zeros_like(raw_spectrum, dtype=bool)
+    total_mask = np.zeros_like(raw_spectrum, dtype=bool)
+    filtered_fft2 = np.zeros_like(raw_spectrum)
+    filtered_spectrum = np.zeros_like(raw_spectrum)
 
     if filter_type == 'box':
-        box_mask = filter_box(fft2_image, width, height)
+        box_mask = filter_box(raw_spectrum, width, height)
 
-        filtered_fft2[box_mask] = np.max(magnitude_spectrum) + 0.1 
-        filtered_fft2[~box_mask] = fft2_image[~box_mask]
-
-        filtered_magspec[box_mask] = np.max(magnitude_spectrum) + 0.1
-        filtered_magspec[~box_mask] = magnitude_spectrum[~box_mask]
+        filtered_spectrum[box_mask] = np.max(raw_spectrum) + 0.1
+        filtered_spectrum[~box_mask] = raw_spectrum[~box_mask]
 
     elif filter_type == 'threshold':
-        # gate_mask = np.full(np.shape(fft2_image), False)
+        # gate_mask = np.full(np.shape(raw_spectrum), False)
         # gate_mask[5:3200,5:4500] = True
 
-        threshold_mask = (magnitude_spectrum <= F_D) | (magnitude_spectrum >= T_D) # sets all cells that meet this condition (elimination condition) as TRUE
+        threshold_mask = (raw_spectrum <= F_D) | (raw_spectrum >= T_D) # sets all cells that meet this condition (elimination condition) as TRUE
         tot =  threshold_mask
 
-        filtered_fft2[tot] = S_D # all cells to be eliminated are set to S_D (zero)
-        filtered_fft2[~tot] = fft2_image[~tot] # all other cells to kept are given the value of fft2_image
+        filtered_spectrum[tot] = S_D #np.max(magnitude_spectrum) + 0.1 # all mask cells are set to white (note: they will all be black if every cell is set to 255)
+        # print(filtered_spectrum)
+        filtered_spectrum[~tot] = raw_spectrum[~tot] # all other cells will be their respective spectrum value
 
-        filtered_magspec[tot] = 0#np.max(magnitude_spectrum) + 0.1 # all mask cells are set to white (note: they will all be black if every cell is set to 255)
-        filtered_magspec[~tot] = magnitude_spectrum[~tot] # all other cells will be their respective mag spectrum value
+        # print(filtered_spectrum)
 
     elif filter_type == 'none':
-        filtered_fft2 = fft2_image
-        filtered_magspec = magnitude_spectrum
+        filtered_spectrum = raw_spectrum
 
-    elif filter_type == 'both':
-        box_mask = filter_box(fft2_image, width, height)
+    elif filter_type == 'boxhold':
+        box_mask = filter_box(raw_spectrum, width, height)
 
-        # gate_mask = np.full(np.shape(fft2_image), False)
+        # gate_mask = np.full(np.shape(raw_spectrum), False)
         # gate_mask[20:3000,20:4000] = True
 
-        threshold_mask = (magnitude_spectrum <= F_D) | (magnitude_spectrum >= T_D)
+        threshold_mask = (raw_spectrum <= F_D) | (raw_spectrum >= T_D)
 
         total_mask = threshold_mask & box_mask #& gate_mask
 
-        filtered_fft2[total_mask] = magnitude_spectrum[0,0] 
-        filtered_fft2[~total_mask] = fft2_image[~total_mask]
-
-        filtered_magspec[total_mask] = np.max(magnitude_spectrum) + 0.1
-        filtered_magspec[~total_mask] = magnitude_spectrum[~total_mask]
+        filtered_spectrum[total_mask] = np.max(raw_spectrum) + 0.1
+        filtered_spectrum[~total_mask] = raw_spectrum[~total_mask]
 
     elif filter_type == 'star':
-        star_mask = np.zeros_like(fft2_image, dtype=bool)
+        star_mask = np.zeros_like(raw_spectrum, dtype=bool)
         
         for angle in angles:
-            angle_mask = star_filter(fft2_image,angle,thickness)
+            angle_mask = star_filter(raw_spectrum,angle,thickness)
             star_mask |= angle_mask
 
-        filtered_fft2[star_mask] = np.max(magnitude_spectrum) + 0.1
-        filtered_fft2[~star_mask] = fft2_image[~star_mask]
-
-        filtered_magspec[star_mask] = np.max(magnitude_spectrum) + 0.1
-        filtered_magspec[~star_mask] = magnitude_spectrum[~star_mask]
+        filtered_spectrum[star_mask] = np.max(raw_spectrum) + 0.1
+        filtered_spectrum[~star_mask] = raw_spectrum[~star_mask]
 
     elif filter_type == 'starhold':
-        star_mask = np.zeros_like(fft2_image, dtype=bool)
+        star_mask = np.zeros_like(raw_spectrum, dtype=bool)
         
         for angle in angles:
-            angle_mask = star_filter(fft2_image,angle,thickness)
+            angle_mask = star_filter(raw_spectrum,angle,thickness)
             star_mask |= angle_mask
 
-        threshold_mask = (magnitude_spectrum <= F_D) | (magnitude_spectrum >= T_D) # sets all cells that meet this condition (elimination condition) as TRUE
+        threshold_mask = (raw_spectrum <= F_D) | (raw_spectrum >= T_D) # sets all cells that meet this condition (elimination condition) as TRUE
         tot =  threshold_mask & star_mask
 
-        filtered_fft2[tot] = np.max(magnitude_spectrum) + 0.1
-        filtered_fft2[~tot] = fft2_image[~tot]
+        filtered_spectrum[tot] = np.max(raw_spectrum) + 0.1
+        filtered_spectrum[~tot] = raw_spectrum[~tot]
 
-        filtered_magspec[tot] = np.max(magnitude_spectrum) + 0.1
-        filtered_magspec[~tot] = magnitude_spectrum[~tot]
-
-    return magnitude_spectrum, filtered_fft2, filtered_magspec, phase_spectrum
+    return filtered_spectrum
 
 #%% [markdown]
 
@@ -188,13 +186,15 @@ def filter(fft2_image, filter_type, width, height, T_D, S_D, F_D):
 
 # %%
 
-def overhaul(image_path, filter_type, width, height):
+def overhaul(image_path, filter_type1, filter_type2, width, height):
     image = io.imread(image_path, as_gray=True)
     fft2_image = apply_fft2(image)
-    magnitude_spectrum, filtered_fft2, filtered_magspec, phase_spectrum = filter(fft2_image, filter_type, width, height, T_D, S_D, F_D)
-    filtered_image = rebuild_image(filtered_fft2)
+    magnitude_spectrum, log_magnitude_spectrum, phase_spectrum = spectrum_extract(fft2_image)
+    filtered_magspec = filter(magnitude_spectrum, filter_type1, width, height, T_D_mag, S_D, F_D_mag)
+    filtered_phasespec = filter(phase_spectrum, filter_type2, width, height, T_D_phase, S_D, F_D_phase)
+    filtered_image = np.real(rebuild_image_specs(filtered_magspec, filtered_phasespec))
     # print(filtered_image)
-    return fft2_image, magnitude_spectrum, filtered_fft2, filtered_magspec, filtered_image, phase_spectrum
+    return image, log_magnitude_spectrum, phase_spectrum, filtered_image, np.log1p(filtered_magspec), filtered_phasespec
 
 def save_as_png(array, filename):
     normalized_array = (array - np.min(array)) / (np.max(array) - np.min(array))
@@ -210,30 +210,39 @@ def save_as_png(array, filename):
 
 if __name__ == "__main__":
 
-    image_path1 = '/home/unitx/Downloads/macbook_images/grid2.jpg'
+    # main vars
+
+    image_path1 = '/home/unitx/wabbit_playground/FFT/testbook.png'
     image_path2 = '/home/unitx/Downloads/macbook_images/doublebarlight_03_cropped.png'
 
-    T_D = 28 
-    F_D = 4
     S_D = 0
 
+    # mag spec avrs
+    T_D_mag = 5000
+    F_D_mag = 0
+
+    # phase spec avrs
+    T_D_phase = 5000
+    F_D_phase = 0
+
     # angles = [0,5,10,15,20,25,30,35,40,45,50,55,60,65,70,75,80,85,90]
-    # angles = [0, 10, 20, 30, 40, 50, 60, 70, 80, 90]
-    angles = np.arange(0,84,3)
+    angles = [0, 10, 20, 30, 40, 50, 60, 70, 80, 90]
+    # angles = np.arange(0,84,3)
 
     thickness = 60
 
     parser = argparse.ArgumentParser(description='FFT2 image filtering')
-    parser.add_argument('filter_type', choices=['box', 'threshold', 'both', 'none', 'star', 'starhold'], help="Type of filter to apply: 'box', 'threshold', 'both' or 'none'")
-    parser.add_argument('-wd', '--width', help="This is relevent for 'box' and 'both' filters; select a width to apply the filter at each given angle", type=int)
-    parser.add_argument('-ht', '--height', help="This is relevent for 'box' and 'both' filters; select a width to apply the filter at each given angle", type=int)
+    parser.add_argument('filter_type1', choices=['box', 'threshold', 'boxhold', 'none', 'star', 'starhold'], help="Type of filter to apply: 'box', 'threshold', 'boxhold' or 'none'")
+    parser.add_argument('filter_type2', choices=['box', 'threshold', 'boxhold', 'none', 'star', 'starhold'], help="Type of filter to apply: 'box', 'threshold', 'boxhold' or 'none'")
+    parser.add_argument('-wd', '--width', help="This is relevent for 'box' and 'boxhold' filters; select a width to apply the filter at each given angle", type=int)
+    parser.add_argument('-ht', '--height', help="This is relevent for 'box' and 'boxhold' filters; select a width to apply the filter at each given angle", type=int)
     args = parser.parse_args()
 
-    fft2_01, magnitude_spectrum_01, filtered_fft2_01, filtered_magspec_01, filtered_01, phase_spectrum01 = overhaul(image_path1, args.filter_type, args.width, args.height)
+    image01, log_magnitude_spectrum01, phase_spectrum01, filtered_image01, log_filtered_magspec01, filtered_phasespec01 = overhaul(image_path1, args.filter_type1, args.filter_type2, args.width, args.height)
     # fft2_02, magnitude_spectrum_02, filtered_fft2_02, filtered_magspec_02, filtered_02, phase_spectrum02 = overhaul(image_path2, args.filter_type, args.width, args.height)
 
-    round_magspec_01 = np.round(magnitude_spectrum_01, 5)
-    flat_round_magspec_01 = round_magspec_01.flatten()
+    # round_magspec_01 = np.round(magnitude_spectrum_01, 5)
+    # flat_round_magspec_01 = round_magspec_01.flatten()
 
     # round_magspec_02 = np.round(magnitude_spectrum_02, 5)
     # flat_round_magspec_02 = round_magspec_02.flatten()
@@ -241,41 +250,35 @@ if __name__ == "__main__":
     image1 = io.imread(image_path1, as_gray=True)
     # image2 = io.imread(image_path2, as_gray=True)
 
+    # print(filtered_magspec_01)
+
     # Plotting
     fig1, axes1 = plt.subplots(2, 3, figsize=(33, 18), gridspec_kw={'width_ratios': [1, 1, 1]})
 
     im1 = axes1[0, 0].imshow(image1, cmap='gray')
     axes1[0, 0].set_title('Raw Image')
 
-    im2 = axes1[0, 1].imshow(np.abs(phase_spectrum01), cmap='gray')
+    im2 = axes1[0, 1].imshow(phase_spectrum01, cmap='gray')
     axes1[0, 1].set_title('Phase Spectrum')
 
-    im3 = axes1[0, 2].imshow(np.abs(magnitude_spectrum_01), cmap='gray')
+    im3 = axes1[0, 2].imshow(log_magnitude_spectrum01, cmap='gray')
     axes1[0, 2].set_title('Magnitude Spectrum')
 
-    im4 = axes1[0, 3].imshow(np.abs(filtered_magspec_01), cmap='gray')
-    axes1[0, 3].set_title('filtered_FFT2_lens1')
+    im4 = axes1[1, 0].imshow(filtered_image01, cmap='gray')
+    axes1[1, 0].set_title('Filtered Image')
 
-    im5 = axes1[1, 0].imshow(image2, cmap='gray')
-    axes1[1, 0].set_title('raw_lens2')
+    im5 = axes1[1, 1].imshow(phase_spectrum01, cmap='gray')
+    axes1[1, 1].set_title('Filtered Phase Spectrum')
 
-    im6 = axes1[1, 1].imshow(np.abs(filtered_02), cmap='gray')
-    axes1[1, 1].set_title('filtered_lens2')
-
-    im7 = axes1[1, 2].imshow(np.abs(magnitude_spectrum_02), cmap='gray')
-    axes1[1, 2].set_title('FFT2_lens2')
-
-    im8 = axes1[1, 3].imshow(np.abs(filtered_magspec_02), cmap='gray')
-    axes1[1, 3].set_title('filtered_FFT2_lens2')
+    im6 = axes1[1, 2].imshow(log_filtered_magspec01, cmap='gray')
+    axes1[1, 2].set_title('Filtered Magnitude Spectrum')
 
     # plt.colorbar(im1, ax=axes1[0, 0])
     # plt.colorbar(im2, ax=axes1[0, 1])
-    plt.colorbar(im3, ax=axes1[0, 2])
-    plt.colorbar(im4, ax=axes1[0, 3])
+    # plt.colorbar(im3, ax=axes1[0, 2])
+    # plt.colorbar(im4, ax=axes1[0, 3])
     # plt.colorbar(im5, ax=axes1[1, 0])
     # plt.colorbar(im6, ax=axes1[1, 1])
-    plt.colorbar(im7, ax=axes1[1, 2])
-    plt.colorbar(im8, ax=axes1[1, 3])
 
 
 
