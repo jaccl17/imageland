@@ -36,8 +36,8 @@ def filter_by_angle(fft2_image, angle, W_D):
     sin_theta = np.sin(theta)
     cos_theta = np.cos(theta)
 
-    u_values = np.arange(u_max).reshape(-1, 1)  # Column vector
-    v_values = np.arange(v_max).reshape(1, -1)  # Row vector
+    u_values = np.arange(u_max).reshape(-1, 1)
+    v_values = np.arange(v_max).reshape(1, -1)
 
     u_cos_v = u_values * sin_theta - v_values * cos_theta
 
@@ -61,8 +61,8 @@ def filter_box(fft2_image, width, height):
     u_max, v_max = fft2_image.shape
     mask = np.zeros_like(fft2_image, dtype=bool)
 
-    u_values = np.arange(u_max).reshape(-1, 1)  # Column vector
-    v_values = np.arange(v_max).reshape(1, -1)  # Row vector
+    u_values = np.arange(u_max).reshape(-1, 1) 
+    v_values = np.arange(v_max).reshape(1, -1) 
 
     u_center = u_max / 2
     v_center = v_max / 2
@@ -141,8 +141,8 @@ if __name__ == "__main__":
     parser.add_argument('filter_type', choices=['box', 'threshold', 'both', 'none'], help="Type of filter to apply: 'box', 'threshold', 'both' or 'none'")
     args = parser.parse_args()
 
-    image_path1 = '/home/unitx/Downloads/macbook_images/grid2.jpg'
-    image_path2 = 'VS_watchband_02.png'
+    image_path1 = 'grid.jpg'
+    image_path2 = 'grid2.jpg'
 
     fft2_01, magnitude_spectrum_01, filtered_fft2_01, filtered_magspec_01, filtered_01 = overhaul(image_path1, args.width, args.height, args.filter_type)
     fft2_02, magnitude_spectrum_02, filtered_fft2_02, filtered_magspec_02, filtered_02 = overhaul(image_path2, args.width, args.height, args.filter_type)

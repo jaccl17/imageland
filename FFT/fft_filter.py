@@ -113,7 +113,6 @@ def filter_box(fft2_image, width, height):
 def filter(raw_spectrum, filter_type, width, height, T_D, S_D, F_D):
     threshold_mask = np.zeros_like(raw_spectrum, dtype=bool)
     total_mask = np.zeros_like(raw_spectrum, dtype=bool)
-    filtered_fft2 = np.zeros_like(raw_spectrum)
     filtered_spectrum = np.zeros_like(raw_spectrum)
 
     if filter_type == 'box':
@@ -231,8 +230,8 @@ if __name__ == "__main__":
 
     # main vars
 
-    image_path1 = '/home/unitx/wabbit_playground/FFT/testbook.png'
-    image_path2 = '/home/unitx/Downloads/macbook_images/doublebarlight_03_cropped.png'
+    image_path1 = 'pic01.png'
+    image_path2 = 'pic02.png'
 
     S_D = 0
 
@@ -298,38 +297,6 @@ if __name__ == "__main__":
     # plt.colorbar(im4, ax=axes1[0, 3])
     # plt.colorbar(im5, ax=axes1[1, 0])
     # plt.colorbar(im6, ax=axes1[1, 1])
-
-
-
-    # fig2, axes2 = plt.subplots(2, 3, figsize=(25, 10), gridspec_kw={'width_ratios': [1, 1, 1]})
-
-
-    # flat_mag_01 = magnitude_spectrum_01.flatten()
-    # axes2[0,0].set_ylim(0,40)
-    # axes2[0,0].plot(np.arange(0,len(flat_mag_01),1),flat_mag_01)
-    # axes2[0,0].set_title('magnitudes_01')
-
-    # flat_mag_filtered_01 = filtered_magspec_01.flatten()
-    # axes2[0,1].set_ylim(0,40)
-    # axes2[0,1].plot(np.arange(0,len(flat_mag_filtered_01),1),flat_mag_filtered_01)
-    # axes2[0,1].set_title('filtered_magnitudes_01')
-
-    # axes2[0,2].text(0.0, 0.7, f' size mag_spec: {len(flat_round_magspec_01)}\n mean mag_spec: {np.mean(magnitude_spectrum_01)}\n mode mag_spec: {st.mode(flat_round_magspec_01).mode}\n mode_count mag_spec: {st.mode(flat_round_magspec_01).count}\n max mag_spec: {np.max(magnitude_spectrum_01)}\n min mag_spec: {np.min(magnitude_spectrum_01)}', horizontalalignment='left', verticalalignment='top', fontsize=12)
-    # axes2[0,2].axis('off')
-
-
-    # flat_mag_02 = magnitude_spectrum_02.flatten()
-    # axes2[1,0].set_ylim(0,40)
-    # axes2[1,0].plot(np.arange(0,len(flat_mag_02),1),flat_mag_02)
-    # axes2[1,0].set_title('magnitudes_02')
-
-    # flat_mag_filtered_02 = filtered_magspec_02.flatten()
-    # axes2[1,1].set_ylim(0,40)
-    # axes2[1,1].plot(np.arange(0,len(flat_mag_filtered_02),1),flat_mag_filtered_02)
-    # axes2[1,1].set_title('filtered_magnitudes_02')
-
-    # axes2[1,2].text(0.0, 0.7, f' size mag_spec: {len(flat_round_magspec_02)}\n mean mag_spec: {np.mean(magnitude_spectrum_02)}\n mode mag_spec: {st.mode(flat_round_magspec_02).mode}\n mode_count mag_spec: {st.mode(flat_round_magspec_02).count}\n max mag_spec: {np.max(magnitude_spectrum_02)}\n min mag_spec: {np.min(magnitude_spectrum_02)}', horizontalalignment='left', verticalalignment='top', fontsize=12)
-    # axes2[1,2].axis('off')
 
     plt.tight_layout()
     plt.show()
