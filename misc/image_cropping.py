@@ -22,8 +22,8 @@ def trim_and_resize_images(input_folder, output_folder, target_width, target_hei
  
                 img.save(os.path.join(output_folder, filename))
 
-input_folder = "/home/unitx/wabbit_playground/estee_lauder/raw_dropper"
-output_folder = "/home/unitx/wabbit_playground/estee_lauder/dropper_cropped"
+input_folder = "path"
+output_folder = "path"
 target_width = 95
 target_height = 1280
 
