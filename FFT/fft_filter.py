@@ -134,6 +134,18 @@ def filter(raw_spectrum, filter_type, width, height, T_D, S_D, F_D):
         filtered_spectrum[~tot] = raw_spectrum[~tot] # all other cells will be their respective spectrum value
 
         # print(filtered_spectrum)
+    elif filter_type == 'threshold_i':
+        # gate_mask = np.full(np.shape(raw_spectrum), False)
+        # gate_mask[5:3200,5:4500] = True
+
+        threshold_mask = (raw_spectrum >= F_D) | (raw_spectrum <= T_D) # sets all cells that meet this condition (elimination condition) as TRUE
+        tot =  threshold_mask
+
+        filtered_spectrum[tot] = S_D #np.max(magnitude_spectrum) + 0.1 # all mask cells are set to white (note: they will all be black if every cell is set to 255)
+        # print(filtered_spectrum)
+        filtered_spectrum[~tot] = raw_spectrum[~tot] # all other cells will be their respective spectrum value
+
+        # print(filtered_spectrum)
 
     elif filter_type == 'none':
         filtered_spectrum = raw_spectrum
@@ -173,7 +185,13 @@ def filter(raw_spectrum, filter_type, width, height, T_D, S_D, F_D):
 
         filtered_spectrum[tot] = np.max(raw_spectrum) + 0.1
         filtered_spectrum[~tot] = raw_spectrum[~tot]
+    elif filter_type == 'zap':
+        threshold_mask = (raw_spectrum == F_D) | (raw_spectrum == T_D)
+        tot =  threshold_mask
 
+        filtered_spectrum[tot] = S_D #np.max(magnitude_spectrum) + 0.1 # all mask cells are set to white (note: they will all be black if every cell is set to 255)
+        # print(filtered_spectrum)
+        filtered_spectrum[~tot] = raw_spectrum[~tot] # all other cells will be their respective spectrum value
     return filtered_spectrum
 
 #%% [markdown]
@@ -190,6 +208,7 @@ def overhaul(image_path, filter_type1, filter_type2, width, height):
     image = io.imread(image_path, as_gray=True)
     fft2_image = apply_fft2(image)
     magnitude_spectrum, log_magnitude_spectrum, phase_spectrum = spectrum_extract(fft2_image)
+    # print(st.mode(np.round(phase_spectrum,1)))
     filtered_magspec = filter(magnitude_spectrum, filter_type1, width, height, T_D_mag, S_D, F_D_mag)
     filtered_phasespec = filter(phase_spectrum, filter_type2, width, height, T_D_phase, S_D, F_D_phase)
     filtered_image = np.real(rebuild_image_specs(filtered_magspec, filtered_phasespec))
@@ -218,12 +237,12 @@ if __name__ == "__main__":
     S_D = 0
 
     # mag spec avrs
-    T_D_mag = 5000
-    F_D_mag = 0
+    T_D_mag = 5000 # upper
+    F_D_mag = 0 # lower
 
     # phase spec avrs
-    T_D_phase = np.pi
-    F_D_phase = -np.pi
+    T_D_phase = -3.1 # upper
+    F_D_phase = -3 # lower
 
     # angles = [0,5,10,15,20,25,30,35,40,45,50,55,60,65,70,75,80,85,90]
     angles = [0, 10, 20, 30, 40, 50, 60, 70, 80, 90]
@@ -232,8 +251,8 @@ if __name__ == "__main__":
     thickness = 60
 
     parser = argparse.ArgumentParser(description='FFT2 image filtering')
-    parser.add_argument('filter_type1', choices=['box', 'threshold', 'boxhold', 'none', 'star', 'starhold'], help="Type of filter to apply: 'box', 'threshold', 'boxhold' or 'none'")
-    parser.add_argument('filter_type2', choices=['box', 'threshold', 'boxhold', 'none', 'star', 'starhold'], help="Type of filter to apply: 'box', 'threshold', 'boxhold' or 'none'")
+    parser.add_argument('filter_type1', choices=['box', 'threshold', 'threshold_i', 'boxhold', 'none', 'star', 'starhold', 'zap'], help="Type of filter to apply: 'box', 'threshold', 'boxhold' or 'none'")
+    parser.add_argument('filter_type2', choices=['box', 'threshold', 'threshold_i', 'boxhold', 'none', 'star', 'starhold', 'zap'], help="Type of filter to apply: 'box', 'threshold', 'boxhold' or 'none'")
     parser.add_argument('-wd', '--width', help="This is relevent for 'box' and 'boxhold' filters; select a width to apply the filter at each given angle", type=int)
     parser.add_argument('-ht', '--height', help="This is relevent for 'box' and 'boxhold' filters; select a width to apply the filter at each given angle", type=int)
     args = parser.parse_args()
@@ -267,7 +286,7 @@ if __name__ == "__main__":
     im4 = axes1[1, 0].imshow(filtered_image01, cmap='gray')
     axes1[1, 0].set_title('Filtered Image')
 
-    im5 = axes1[1, 1].imshow(phase_spectrum01, cmap='gray')
+    im5 = axes1[1, 1].imshow(filtered_phasespec01, cmap='gray')
     axes1[1, 1].set_title('Filtered Phase Spectrum')
 
     im6 = axes1[1, 2].imshow(log_filtered_magspec01, cmap='gray')
