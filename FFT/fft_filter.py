@@ -222,8 +222,8 @@ if __name__ == "__main__":
     F_D_mag = 0
 
     # phase spec avrs
-    T_D_phase = 5000
-    F_D_phase = 0
+    T_D_phase = np.pi
+    F_D_phase = -np.pi
 
     # angles = [0,5,10,15,20,25,30,35,40,45,50,55,60,65,70,75,80,85,90]
     angles = [0, 10, 20, 30, 40, 50, 60, 70, 80, 90]
