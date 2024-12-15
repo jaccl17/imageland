@@ -3,6 +3,10 @@
 # I wanted to provide an example of my literacy with tensorflow for my grad applications, so I designed this simple 
 # neural network. It looks at screenshots from Minecraft, one of my favorite video games, and provides feedback on 
 # what the NN sees.
+# The images for this exploration can be found at 
+# https://www.kaggle.com/datasets/sqdartemy/minecraft-screenshots-dataset-with-features
+# I have provided a correctly organized CSV (minecraft_features_and_decisions.csv) that you should use
+# to make my model train and load correctly
 # 
 # It looks at each image and predicts a yes (1) or no (0) to the following four quesitons
 # - Is the player on land?
