@@ -17,6 +17,29 @@
 #       predicted answers to the questions we're asking.
 
 # %%
+import numpy as np
+import matplotlib.pyplot as plt
+import pandas as pd
+from sklearn.model_selection import train_test_split
+import tensorflow as tf
+import tensorflow_hub as hub
+import tf_keras
+import random
+import os
+import logging
+from minecraft_utils import *
+logging.getLogger("tensorflow").setLevel(logging.ERROR)
+tf.autograph.set_verbosity(0)
+# %%
+# variables
+img_size = 224
+autotune = tf.data.experimental.AUTOTUNE
+batch_size = 500
+decision_tree = np.array([['On land', 'In Water'],
+                             ['Holding an Item', 'Empty-handed'], 
+                             ['Mob Spawn Risk!','Safe from Mob Spawns'],
+                             ['Full Health', 'Low Health']])
+# %%
 def image_parser(image_name, label):
     try:
         image_read = tf.io.read_file(image_name)
@@ -71,7 +94,7 @@ def plot_metrics(history):
 def decider(array):
     decisions = []
     for i in range(len(array)):
-        if array[i] > 0.8:
+        if array[i] > 0.7:
             decisions.append(decision_tree[i,0])
         else:
             decisions.append(decision_tree[i,1])

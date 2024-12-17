@@ -37,6 +37,7 @@ import logging
 from minecraft_utils import *
 logging.getLogger("tensorflow").setLevel(logging.ERROR)
 tf.autograph.set_verbosity(0)
+from minecraft_utils import *
 # %% [markdown]
 # Here we're just going to check for GPUs and configure them. These help speed up training and prediction.
 
@@ -65,14 +66,14 @@ decision_tree = np.array([['On land', 'In Water'],
                              ['Mob Spawn Risk!','Safe from Mob Spawns'],
                              ['Full Health', 'Low Health']])
 # %% [markdown]
-# Next I want to set up data organisation. This is a crucial yet often overlooked step. In order to have a function NN
+# Then I want to set up data organisation. This is a crucial yet often overlooked step. In order to have a function NN
 # it's important to have well-organized data. Though this works differently than PyTorch, Tensorflow has some helpful
 # data organizing tools
 # %%
 minecraft_data = pd.read_csv("/home/unitx/wabbit_playground/nn/minecraft_features_and_decisions.csv")
 minecraft_data.head(3)
 label_names = list(minecraft_data.columns[1:])
-print(label_names)
+# print(label_names)
 # %%
 image_names = minecraft_data.iloc[:,0] # keep image names as reference
 X = image_names
@@ -142,16 +143,18 @@ pretrained_layer.trainable = False # freezes the pretrained layer
 # %%
 # Scheduler 
 lr_schedule = tf_keras.optimizers.schedules.ExponentialDecay(
-    initial_learning_rate=0.0005,
-    decay_steps=20,
+    initial_learning_rate=0.0008,
+    decay_steps=60,
     decay_rate=0.8
 )
 # %%
 # Model
 model = tf_keras.Sequential([
     pretrained_layer,
-    tf_keras.layers.Dense(1024, activation='relu', name='L1'),
-    tf_keras.layers.Dropout(0.6),
+    # tf_keras.layers.Dense(1000, activation='relu', name='L1'),
+    tf_keras.layers.Dense(200, activation='relu', name='L2'),
+    # tf_keras.layers.Dense(80, activation='relu', name='L3'),
+    tf_keras.layers.Dropout(0.5),
     tf_keras.layers.Dense(n_labels, activation ='linear', name ='output')
 ])
 # model.summary() # use this to check all layers are correct
@@ -173,6 +176,7 @@ history = model.fit(train_dataset,
 # We call our function to plot our metrics
 # %%
 plot_metrics(history)
+# history_old = history
 # %% [markdown]
 # Next comes the most fun part, we make a prediction!!!!!
 # Below I have few lines of code to pick a random image from our Test Dataset, plot it, and compare the predicted answers to 
@@ -183,9 +187,14 @@ for features, labels in test_dataset.take(1):
 
     logits = model.predict(features)
     probabilities = tf.nn.sigmoid(logits).numpy()
+
+    print(f'Raw Actual: {labels[rN].numpy()}')
+    print(f'Raw Predicted: {probabilities[rN]}')
     
     print(f'Actual metrics: {decider(labels[rN].numpy())}')
     print(f'Predicted metrics: {decider(probabilities[rN])}')
     plt.imshow(features[rN].numpy())
 # %% [markdown]
 # And that's it! This model isn't my most robust, but it's an NDA-safe example of my DL experience!
+# %%
+# model.save('my_model.keras')
