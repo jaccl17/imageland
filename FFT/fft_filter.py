@@ -94,7 +94,7 @@ def star_filter(dct_image, angle, thickness):
 
 def filter_box(fft2_image, width, height):
     u_max, v_max = fft2_image.shape
-    mask = np.zeros_like(fft2_image, dtype=bool)
+    # mask = np.zeros_like(fft2_image, dtype=bool)
 
     u_values = np.arange(u_max).reshape(-1, 1) 
     v_values = np.arange(v_max).reshape(1, -1)
@@ -109,6 +109,20 @@ def filter_box(fft2_image, width, height):
 
     return mask
 
+def filter_radial(fft2_image, radius):
+    u_max, v_max = fft2_image.shape
+
+    u_values = np.arange(u_max).reshape(-1, 1)
+    v_values = np.arange(v_max).reshape(1, -1)
+
+    u_center = u_max / 2.0
+    v_center = v_max / 2.0
+
+    dist = np.sqrt((u_values - u_center) ** 2 + (v_values - v_center) ** 2)
+
+    mask = dist <= radius
+
+    return mask
 
 def filter(raw_spectrum, filter_type, width, height, T_D, S_D, F_D):
     threshold_mask = np.zeros_like(raw_spectrum, dtype=bool)
@@ -118,8 +132,29 @@ def filter(raw_spectrum, filter_type, width, height, T_D, S_D, F_D):
     if filter_type == 'box':
         box_mask = filter_box(raw_spectrum, width, height)
 
-        filtered_spectrum[box_mask] = np.max(raw_spectrum) + 0.1
+        filtered_spectrum[box_mask] = S_D # np.max(raw_spectrum) + 0.1
         filtered_spectrum[~box_mask] = raw_spectrum[~box_mask]
+
+    elif filter_type == 'radial':
+        radial_mask = filter_radial(raw_spectrum, width)
+
+        filtered_spectrum[radial_mask] = S_D # np.max(raw_spectrum) + 0.1
+        filtered_spectrum[~radial_mask] = raw_spectrum[~radial_mask]
+
+    elif filter_type == 'radial_i':
+        radial_mask = filter_radial(raw_spectrum, width)
+
+        filtered_spectrum[~radial_mask] = S_D # np.max(raw_spectrum) + 
+        
+    elif filter_type == 'radhold':
+        radial_mask = filter_radial(raw_spectrum, width)
+
+        threshold_mask = (raw_spectrum <= F_D) | (raw_spectrum >= T_D)
+
+        total_mask = threshold_mask & radial_mask #& gate_mask
+
+        filtered_spectrum[total_mask] = S_D
+        filtered_spectrum[~total_mask] = raw_spectrum[~total_mask]
 
     elif filter_type == 'threshold':
         # gate_mask = np.full(np.shape(raw_spectrum), False)
@@ -127,33 +162,32 @@ def filter(raw_spectrum, filter_type, width, height, T_D, S_D, F_D):
 
         threshold_mask = (raw_spectrum <= F_D) | (raw_spectrum >= T_D) # sets all cells that meet this condition (elimination condition) as TRUE
         tot =  threshold_mask
+        print(np.min(raw_spectrum))
 
         filtered_spectrum[tot] = S_D #np.max(magnitude_spectrum) + 0.1 # all mask cells are set to white (note: they will all be black if every cell is set to 255)
         # print(filtered_spectrum)
         filtered_spectrum[~tot] = raw_spectrum[~tot] # all other cells will be their respective spectrum value
-
+        print(np.max(filtered_spectrum))
         # print(filtered_spectrum)
+
     elif filter_type == 'threshold_i':
         # gate_mask = np.full(np.shape(raw_spectrum), False)
         # gate_mask[5:3200,5:4500] = True
 
-        threshold_mask = (raw_spectrum >= F_D) | (raw_spectrum <= T_D) # sets all cells that meet this condition (elimination condition) as TRUE
+        threshold_mask = (raw_spectrum <= F_D) | (raw_spectrum >= T_D) # sets all cells that meet this condition (elimination condition) as TRUE
         tot =  threshold_mask
+        print(np.min(raw_spectrum))
 
-        filtered_spectrum[tot] = S_D #np.max(magnitude_spectrum) + 0.1 # all mask cells are set to white (note: they will all be black if every cell is set to 255)
+        filtered_spectrum[~tot] = S_D #np.max(magnitude_spectrum) + 0.1 # all mask cells are set to white (note: they will all be black if every cell is set to 255)
         # print(filtered_spectrum)
-        filtered_spectrum[~tot] = raw_spectrum[~tot] # all other cells will be their respective spectrum value
-
-        # print(filtered_spectrum)
+        filtered_spectrum[tot] = raw_spectrum[tot] # all other cells will be their respective spectrum value
+        print(np.max(filtered_spectrum))
 
     elif filter_type == 'none':
         filtered_spectrum = raw_spectrum
 
     elif filter_type == 'boxhold':
         box_mask = filter_box(raw_spectrum, width, height)
-
-        # gate_mask = np.full(np.shape(raw_spectrum), False)
-        # gate_mask[20:3000,20:4000] = True
 
         threshold_mask = (raw_spectrum <= F_D) | (raw_spectrum >= T_D)
 
@@ -182,13 +216,27 @@ def filter(raw_spectrum, filter_type, width, height, T_D, S_D, F_D):
         threshold_mask = (raw_spectrum <= F_D) | (raw_spectrum >= T_D) # sets all cells that meet this condition (elimination condition) as TRUE
         tot =  threshold_mask & star_mask
 
-        filtered_spectrum[tot] = np.max(raw_spectrum) + 0.1
+        filtered_spectrum[tot] = S_D # np.max(raw_spectrum) + 0.1
         filtered_spectrum[~tot] = raw_spectrum[~tot]
+
+    elif filter_type == 'starhold_i':
+        star_mask = np.zeros_like(raw_spectrum, dtype=bool)
+        
+        for angle in angles:
+            angle_mask = star_filter(raw_spectrum,angle,thickness)
+            star_mask |= angle_mask
+
+        threshold_mask = (raw_spectrum <= F_D) | (raw_spectrum >= T_D) # sets all cells that meet this condition (elimination condition) as TRUE
+        tot =  threshold_mask & star_mask
+
+        filtered_spectrum[~tot] = S_D # np.max(raw_spectrum) + 0.1
+        filtered_spectrum[tot] = raw_spectrum[tot]
+
     elif filter_type == 'zap':
         threshold_mask = (raw_spectrum == F_D) | (raw_spectrum == T_D)
         tot =  threshold_mask
 
-        filtered_spectrum[tot] = S_D #np.max(magnitude_spectrum) + 0.1 # all mask cells are set to white (note: they will all be black if every cell is set to 255)
+        filtered_spectrum[tot] = S_D  #np.max(magnitude_spectrum) + 0.1 # all mask cells are set to white (note: they will all be black if every cell is set to 255)
         # print(filtered_spectrum)
         filtered_spectrum[~tot] = raw_spectrum[~tot] # all other cells will be their respective spectrum value
     return filtered_spectrum
@@ -230,28 +278,28 @@ if __name__ == "__main__":
 
     # main vars
 
-    image_path1 = 'pic01.png'
-    image_path2 = 'pic02.png'
+    image_path1 = '/home/unitx/wabbit_playground/DCT/VS_watchband_02.png'
+    # image_path2 = 'pic02.png'
 
     S_D = 0
 
     # mag spec avrs
-    T_D_mag = 5000 # upper
-    F_D_mag = 0 # lower
+    T_D_mag = 150 # upper
+    F_D_mag = 50 # lower
 
     # phase spec avrs
-    T_D_phase = -3.1 # upper
-    F_D_phase = -3 # lower
+    T_D_phase = 3.1 # upper
+    F_D_phase = -3.1 # lower
 
     # angles = [0,5,10,15,20,25,30,35,40,45,50,55,60,65,70,75,80,85,90]
-    angles = [0, 10, 20, 30, 40, 50, 60, 70, 80, 90]
+    angles = [0, 10, 20, 70, 80, 90]
     # angles = np.arange(0,84,3)
 
-    thickness = 60
+    thickness = 40
 
     parser = argparse.ArgumentParser(description='FFT2 image filtering')
-    parser.add_argument('filter_type1', choices=['box', 'threshold', 'threshold_i', 'boxhold', 'none', 'star', 'starhold', 'zap'], help="Type of filter to apply: 'box', 'threshold', 'boxhold' or 'none'")
-    parser.add_argument('filter_type2', choices=['box', 'threshold', 'threshold_i', 'boxhold', 'none', 'star', 'starhold', 'zap'], help="Type of filter to apply: 'box', 'threshold', 'boxhold' or 'none'")
+    parser.add_argument('filter_type1', choices=['box', 'threshold', 'threshold_i', 'boxhold', 'none', 'star', 'starhold', 'starhold_i', 'zap', 'radial', 'radial_i', 'radhold'], help="Type of filter to apply: 'box', 'threshold', 'boxhold' or 'none'")
+    parser.add_argument('filter_type2', choices=['box', 'threshold', 'threshold_i', 'boxhold', 'none', 'star', 'starhold', 'starhold_i', 'zap', 'radial', 'radial_i', 'radhold'], help="Type of filter to apply: 'box', 'threshold', 'boxhold' or 'none'")
     parser.add_argument('-wd', '--width', help="This is relevent for 'box' and 'boxhold' filters; select a width to apply the filter at each given angle", type=int)
     parser.add_argument('-ht', '--height', help="This is relevent for 'box' and 'boxhold' filters; select a width to apply the filter at each given angle", type=int)
     args = parser.parse_args()
