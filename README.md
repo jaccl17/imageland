@@ -38,7 +38,7 @@
 
 ##  Features
 
-**Neural Networks (/nn):** Here I have placed basic examples of image classification neural networks, including data sorting, in the form of a '.py' and '.ipynb'
+**Neural Networks (/nn):** Here I have placed examples of image classification neural networks, including data sorting, in the form of a '.py' and '.ipynb'. You will also find my Modernized Deep Embedded Clustering (MDEC) algorithm. This is an unsupervised learning algorithm driven by a Convolutional Autoencoder with validation, and a custom clustering layer. There is also a test station where logs can be tracked, and clustering can be viewed. The MDEC algorithm is based on <a href="https://www.ijcai.org/proceedings/2017/0243.pdf">IDEC</a> and <a href="https://xifengguo.github.io/papers/ICONIP17-DCEC.pdf">DCEC</a> algorithms, but utilizes modern tools for efficiency and includes CAE validaiton for improved encoding and reconstruction
 
 **Pseudo-Bi-directional Empirical Mode Decomposition (/BEMD):** This is a applies a 1D Empircal Mode Decomposition to the rows of a 2D array and then to the column of the decomposed matrix - this can be scaled to higher N-dimensional matrices. I include a BEMB library-based functionality as well as a my own BEMB process. More information can be found <a href="https://en.wikipedia.org/wiki/Multidimensional_empirical_mode_decomposition">here</a> 
 
@@ -79,6 +79,12 @@
     ├── nn
     │   ├── directory_split.py
     │   ├── nn1.ipynb
+    │   ├── MDEC
+    │       ├── MDEC_autoencoder.py
+    │       ├── MDEC_clustering_layer.py
+    │       ├── MDEC_main.py
+    │       ├── MDEC_test_station.py
+    │       ├── MDEC_main_old.py
     │   └── nn1.py
     ├── popcorn_stand.py
     └── test.py
