@@ -20,8 +20,8 @@ from tensorflow.keras.optimizers import SGD
 from tensorflow.keras.utils import plot_model
 from tensorflow.keras.datasets import mnist
 
-from JDEC_autoencoder import ConvAutoencoder
-from JDEC_clusteringlayer import ClusteringLayer
+from MDEC_autoencoder import ConvAutoencoder
+from MDEC_clusteringlayer import ClusteringLayer
 
 ###############################################################################
 
@@ -52,7 +52,7 @@ def load_mnist():
     # x = x.reshape((x.shape[0],-1)) # (70000, 28, 28) becomes (70000, 28*28) or (70000, 784)  # normalize as it does in DEC paper
     return x, y, x_val, y_val
 
-class JDEC(object):
+class MDEC(object):
     def __init__(self,
                  input_shape,
                  bottleneck_size,
@@ -62,7 +62,7 @@ class JDEC(object):
                  save_dir = None,
                  **kwargs):
         
-        super(JDEC, self).__init__()
+        super(MDEC, self).__init__()
 
         self.input_shape = input_shape # size of flattened input image is the first dimension
         self.bottleneck_size = bottleneck_size # array of dimensions to go though as the autoencoder is trained
@@ -73,7 +73,10 @@ class JDEC(object):
         self.save_dir = save_dir
 
         if self.save_dir is None:
-            self.save_dir = f'/home/unitx/wabbit_playground/nn/clustering_log_{self.rn}'
+            self.save_dir = f'/home/unitx/wabbit_playground/nn/MDEC/clustering_log_{self.rn}'
+
+        self.save_dir_path = Path(self.save_dir)
+        self.save_dir_path.mkdir(parents=True, exist_ok=True)
 
         self.autoencoder = ConvAutoencoder(shape=input_shape, kernel_size=5, padding='same', bottleneck_size=bottleneck_size)
         # self.autoencoder = ConvAutoencoder(self.dimensions) # ensures the dimensions array is placed into the autoencoder
@@ -126,7 +129,7 @@ class JDEC(object):
         
             print(f'Pretraining complete, took: {time.time() - t_0} seconds')
             self.autoencoder.save_weights(f'{self.save_dir}/cae_pretrain.weights.h5')
-            print(f'Pretrained weights saved to log file as cae_pretrain.weights.h5')
+            print(f'Pretrained weights saved to log folder as cae_pretrain.weights.h5')
 
         # self.model.compile(loss={'clustering': 'kld', 'reconstruction': 'mse'}, 
         #                    loss_weights=[gamma, 1], 
@@ -165,7 +168,7 @@ class JDEC(object):
                    tol=1e-3,
                    ae_weights=None,
                    update_interval=140,
-                   save_interval=5,
+                   save_interval=140,
                    maxiter=2e4):
 
         print(f'Update Interval: {update_interval}')
@@ -178,9 +181,7 @@ class JDEC(object):
         y_pred_last = np.copy(y_pred) # save the clusters
         self.model.get_layer(name='clustering').set_weights([kmeans.cluster_centers_]) # set the weights according to the k-means clustering for good initialzation
 
-        save_dir_path = Path(self.save_dir)
-        save_dir_path.mkdir(parents=True, exist_ok=True)
-        log_file = save_dir_path / 'jdec_log_.csv'
+        log_file = self.save_dir_path / 'mdec_log_.csv'
 
         header = ['iter', 'nmi', 'acc', 'ari', 'L', 'Lr', 'Lc', 'timestamp']
 
@@ -249,8 +250,8 @@ class JDEC(object):
             logs = {'loss': train_loss[0], 'clustering_loss': train_loss[1], 'reconstruction_loss': train_loss[2]}
                 
             if i % save_interval == 0 and i > 0:
-                print(f'Saving model to {self.save_dir}/JDEC_model.weights.h5')
-                self.model.save_weights(f'{self.save_dir}/JDEC_model.weights.h5')
+                print(f'Saving model to {self.save_dir}/MDEC_model.weights.h5')
+                self.model.save_weights(f'{self.save_dir}/MDEC_model.weights.h5')
 
                 bottleneck_features = self.encoder.predict(x)
                 features_2d = TSNE(n_components=2).fit_transform(bottleneck_features)
@@ -290,14 +291,14 @@ if __name__ == "__main__":
         # print(y.shape)
 
     
-    jdec = JDEC(input_shape=x.shape[1:], bottleneck_size=10, n_clusters=args.n_clusters, batch_size=args.batch_size, save_dir=args.save_dir) # selects the last dimension of x (784) to by the input array size and 10 to be the bottleneck size
-    jdec.pretrainer(x, x_val, batch_size=128, epochs=50, ae_weights=args.ae_weights, show_history=True)
-    plot_model(jdec.model, to_file='jdec_model.png', show_shapes=True)
-    jdec.model.summary()
+    mdec = MDEC(input_shape=x.shape[1:], bottleneck_size=10, n_clusters=args.n_clusters, batch_size=args.batch_size, save_dir=args.save_dir) # selects the last dimension of x (784) to by the input array size and 10 to be the bottleneck size
+    mdec.pretrainer(x, x_val, batch_size=128, epochs=50, ae_weights=args.ae_weights, show_history=True)
+    plot_model(mdec.model, to_file='mdec_model.png', show_shapes=True)
+    mdec.model.summary()
 
     t0 = time.time()
-    jdec.compile(gamma=args.gamma)
-    y_pred = jdec.clustering(x, y=y, tol=args.tol, update_interval=args.update_interval, save_interval=args.save_interval, maxiter=args.maxiter)
+    mdec.compile(gamma=args.gamma)
+    y_pred = mdec.clustering(x, y=y, tol=args.tol, update_interval=args.update_interval, save_interval=args.save_interval, maxiter=args.maxiter)
     print(y)
     print(y_pred)
     print(("Clustering time: "), (time.time() - t0))

@@ -9,7 +9,7 @@ import os
 # clustering log path
 log_path = 'clustering_log_2025-03-18 12:01'
 # %%
-df = pd.read_csv(f'{log_path}/jdec_log_.csv_2025-03-17 16:49:50')
+df = pd.read_csv(f'{log_path}/mdec_log_.csv')
 
 plt.figure(figsize=(14, 6))
 

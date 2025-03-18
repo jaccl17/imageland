@@ -23,9 +23,9 @@ from tensorflow.keras.optimizers import SGD
 from tensorflow.keras.utils import plot_model
 from tensorflow.keras.datasets import mnist
 
-from JDEC_autoencoder import ConvAutoencoder
-from JDEC_clusteringlayer import ClusteringLayer
-from JDEC_main import JDEC, load_mnist 
+from MDEC_autoencoder import ConvAutoencoder
+from MDEC_clusteringlayer import ClusteringLayer
+from MDEC_main import JDEC, load_mnist 
 # %%
 def align_cluster_labels(y_true, y_pred):
     cm = metrics.confusion_matrix(y_true, y_pred)

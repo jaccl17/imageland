@@ -25,7 +25,7 @@ from tensorflow.keras.optimizers import SGD
 from tensorflow.keras.utils import plot_model
 from tensorflow.keras.datasets import mnist
 
-from JDEC_autoencoder import autoencoder
+from nn.MDEC_autoencoder import autoencoder
 # %%
 def load_mnist():
     (x_train, y_train), (x_test, y_test) = mnist.load_data()

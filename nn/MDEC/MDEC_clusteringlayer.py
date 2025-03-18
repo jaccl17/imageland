@@ -18,7 +18,7 @@ from tensorflow.keras.optimizers import SGD
 from tensorflow.keras.utils import plot_model
 from tensorflow.keras.datasets import mnist
 
-from JDEC_autoencoder import ConvAutoencoder
+from MDEC_autoencoder import ConvAutoencoder
 
 ###############################################################################
 

@@ -20,8 +20,8 @@ from tensorflow.keras.optimizers import SGD
 from tensorflow.keras.utils import plot_model
 from tensorflow.keras.datasets import mnist
 
-from JDEC_autoencoder import ConvAutoencoder
-from JDEC_clusteringlayer import ClusteringLayer
+from nn.MDEC_autoencoder import ConvAutoencoder
+from nn.MDEC_clusteringlayer import ClusteringLayer
 
 ###############################################################################
 
@@ -44,7 +44,7 @@ def align_clusters(y_true, y_pred):
     row_ind, col_ind = linear_sum_assignment(-cm)  # Returns tuple (row, col)
     return np.array([col_ind[np.where(row_ind == i)][0] for i in range(len(row_ind))])
 
-class JDEC(object):
+class MDEC(object):
     def __init__(self,
                  input_shape,
                  bottleneck_size,
@@ -52,7 +52,7 @@ class JDEC(object):
                  alpha=1.0,
                  batch_size=256):
         
-        super(JDEC, self).__init__()
+        super(MDEC, self).__init__()
 
         self.bottleneck_size = bottleneck_size # array of dimensions to go though as the autoencoder is trained
         self.input_shape = input_shape # size of flattened input image is the first dimension
@@ -167,7 +167,7 @@ class JDEC(object):
         save_dir_path = Path(save_dir)
         save_dir_path.mkdir(parents=True, exist_ok=True)
         rn = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-        log_file = save_dir_path / f'jdec_log_.csv_{rn}'
+        log_file = save_dir_path / f'mdec_log_.csv_{rn}'
 
         header = ['iter', 'nmi', 'acc', 'ari', 'L', 'Lr', 'Lc', 'timestamp']
 
@@ -186,8 +186,8 @@ class JDEC(object):
         dataset = dataset.batch(self.batch_size).repeat() # repeats the dataset for multiple epochs
 
         class ClusterCallbacks(tf.keras.callbacks.Callback):
-            def __init__(self, jdec, x, y, tol, log_file, update_interval, target_distribution, predict_clusters):
-                self.jdec = jdec
+            def __init__(self, mdec, x, y, tol, log_file, update_interval, target_distribution, predict_clusters):
+                self.mdec = mdec
                 self.y = y
                 self.x = x
                 self.tol = tol
@@ -245,7 +245,7 @@ class JDEC(object):
                         print('Tolerance reached, training will be stopped.')
                         self.model.stop_training = True
 
-                    bottleneck_features = self.jdec.encoder.predict(self.x)
+                    bottleneck_features = self.mdec.encoder.predict(self.x)
                     features_2d = TSNE(n_components=2).fit_transform(bottleneck_features)
                     plt.scatter(features_2d[:, 0], features_2d[:, 1], c=y_pred, cmap='tab10', s=5)
                     plt.savefig(f'clusters_epoch_{epoch}.png')
@@ -256,9 +256,9 @@ class JDEC(object):
             epochs = int(maxiter), # number of epochs / loop
             steps_per_epoch = int(x.shape[0] / self.batch_size), # essentially samples per epoch given a batch size: num_samples / batch_size
             callbacks = [ 
-                ClusterCallbacks(jdec=self, x=x, y=y, tol=tol, log_file=log_file, update_interval=update_interval, target_distribution=JDEC.target_distribution, predict_clusters = self.predict_clusters), # updates y_pred and saves metrics at update intervals
+                ClusterCallbacks(mdec=self, x=x, y=y, tol=tol, log_file=log_file, update_interval=update_interval, target_distribution=MDEC.target_distribution, predict_clusters = self.predict_clusters), # updates y_pred and saves metrics at update intervals
                 tf.keras.callbacks.ModelCheckpoint( # saves the model after each save_interval
-                    filepath=os.path.join(save_dir, f'JDEC_model.weights.h5'),
+                    filepath=os.path.join(save_dir, f'MDEC_model.weights.h5'),
                     save_weights_only=True,
                     save_freq=save_interval * int(x.shape[0] / self.batch_size)
                 )
@@ -299,14 +299,14 @@ if __name__ == "__main__":
         print(y.shape)
 
     
-    jdec = JDEC(input_shape=x.shape[1:], bottleneck_size=10, n_clusters=args.n_clusters, batch_size=args.batch_size) # selects the last dimension of x (784) to by the input array size and 10 to be the bottleneck size
-    jdec.pretrainer(x, x_val, batch_size=256, epochs=50, ae_weights=None, show_history=True)
-    plot_model(jdec.model, to_file='jdec_model.png', show_shapes=True)
-    jdec.model.summary()
+    mdec = MDEC(input_shape=x.shape[1:], bottleneck_size=10, n_clusters=args.n_clusters, batch_size=args.batch_size) # selects the last dimension of x (784) to by the input array size and 10 to be the bottleneck size
+    mdec.pretrainer(x, x_val, batch_size=256, epochs=50, ae_weights=None, show_history=True)
+    plot_model(mdec.model, to_file='mdec_model.png', show_shapes=True)
+    mdec.model.summary()
 
     t0 = time.time()
-    jdec.compile(gamma=0.9)
-    y_pred = jdec.clustering(x, y=y, tol=args.tol, update_interval=args.update_interval, save_interval=args.save_interval, maxiter=args.maxiter)
+    mdec.compile(gamma=0.9)
+    y_pred = mdec.clustering(x, y=y, tol=args.tol, update_interval=args.update_interval, save_interval=args.save_interval, maxiter=args.maxiter)
     print(y)
     print(y_pred)
     print(("Clustering time: "), (time.time() - t0))
