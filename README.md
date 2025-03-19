@@ -38,7 +38,7 @@
 
 ##  Features
 
-**Neural Networks (/nn):** Here I have placed basic examples of image classification neural networks, including data sorting, in the form of a '.py' and '.ipynb'
+**Neural Networks (/nn):** Here I have placed examples of image classification neural networks, including data sorting, in the form of a '.py' and '.ipynb'. You will also find my Modernized Deep Embedded Clustering (MDEC) algorithm. This is an unsupervised learning algorithm driven by a Convolutional Autoencoder with validation, and a custom clustering layer. There is also a test station where logs can be tracked, and clustering can be viewed. The MDEC algorithm is based on <a href="https://www.ijcai.org/proceedings/2017/0243.pdf">IDEC</a> and <a href="https://xifengguo.github.io/papers/ICONIP17-DCEC.pdf">DCEC</a> algorithms, but utilizes modern tools for efficiency and includes CAE validaiton for improved encoding and reconstruction
 
 **Pseudo-Bi-directional Empirical Mode Decomposition (/BEMD):** This is a applies a 1D Empircal Mode Decomposition to the rows of a 2D array and then to the column of the decomposed matrix - this can be scaled to higher N-dimensional matrices. I include a BEMB library-based functionality as well as a my own BEMB process. More information can be found <a href="https://en.wikipedia.org/wiki/Multidimensional_empirical_mode_decomposition">here</a> 
 
@@ -79,134 +79,17 @@
     ├── nn
     │   ├── directory_split.py
     │   ├── nn1.ipynb
+    │   ├── MDEC
+    │       ├── MDEC_autoencoder.py
+    │       ├── MDEC_clustering_layer.py
+    │       ├── MDEC_main.py
+    │       ├── MDEC_test_station.py
+    │       ├── MDEC_main_old.py
     │   └── nn1.py
     ├── popcorn_stand.py
     └── test.py
 ```
 
-
-###  Project Index
-<details open>
-	<summary><b><code>IMAGELAND/</code></b></summary>
-	<details> <!-- __root__ Submodule -->
-		<summary><b>__root__</b></summary>
-		<blockquote>
-			<table>
-			<tr>
-				<td><b><a href='https://github.com/jaccl17/imageland/blob/master/image_cropping.py'>image_cropping.py</a></b></td>
-				<td><code>❯ REPLACE-ME</code></td>
-			</tr>
-			<tr>
-				<td><b><a href='https://github.com/jaccl17/imageland/blob/master/downsize_calculator.py'>downsize_calculator.py</a></b></td>
-				<td><code>❯ REPLACE-ME</code></td>
-			</tr>
-			<tr>
-				<td><b><a href='https://github.com/jaccl17/imageland/blob/master/test.py'>test.py</a></b></td>
-				<td><code>❯ REPLACE-ME</code></td>
-			</tr>
-			<tr>
-				<td><b><a href='https://github.com/jaccl17/imageland/blob/master/popcorn_stand.py'>popcorn_stand.py</a></b></td>
-				<td><code>❯ REPLACE-ME</code></td>
-			</tr>
-			</table>
-		</blockquote>
-	</details>
-	<details> <!-- nn Submodule -->
-		<summary><b>nn</b></summary>
-		<blockquote>
-			<table>
-			<tr>
-				<td><b><a href='https://github.com/jaccl17/imageland/blob/master/nn/directory_split.py'>directory_split.py</a></b></td>
-				<td><code>❯ REPLACE-ME</code></td>
-			</tr>
-			<tr>
-				<td><b><a href='https://github.com/jaccl17/imageland/blob/master/nn/nn1.py'>nn1.py</a></b></td>
-				<td><code>❯ REPLACE-ME</code></td>
-			</tr>
-			<tr>
-				<td><b><a href='https://github.com/jaccl17/imageland/blob/master/nn/nn1.ipynb'>nn1.ipynb</a></b></td>
-				<td><code>❯ REPLACE-ME</code></td>
-			</tr>
-			</table>
-		</blockquote>
-	</details>
-	<details> <!-- image_stacking Submodule -->
-		<summary><b>image_stacking</b></summary>
-		<blockquote>
-			<table>
-			<tr>
-				<td><b><a href='https://github.com/jaccl17/imageland/blob/master/image_stacking/stacking_test.ipynb'>stacking_test.ipynb</a></b></td>
-				<td><code>❯ REPLACE-ME</code></td>
-			</tr>
-			</table>
-		</blockquote>
-	</details>
-	<details> <!-- DCT Submodule -->
-		<summary><b>DCT</b></summary>
-		<blockquote>
-			<table>
-			<tr>
-				<td><b><a href='https://github.com/jaccl17/imageland/blob/master/DCT/dct_test.py'>dct_test.py</a></b></td>
-				<td><code>❯ REPLACE-ME</code></td>
-			</tr>
-			<tr>
-				<td><b><a href='https://github.com/jaccl17/imageland/blob/master/DCT/dct_test.ipynb'>dct_test.ipynb</a></b></td>
-				<td><code>❯ REPLACE-ME</code></td>
-			</tr>
-			<tr>
-				<td><b><a href='https://github.com/jaccl17/imageland/blob/master/DCT/dct_official.py'>dct_official.py</a></b></td>
-				<td><code>❯ REPLACE-ME</code></td>
-			</tr>
-			<tr>
-				<td><b><a href='https://github.com/jaccl17/imageland/blob/master/DCT/dct_test_bandfilter.py'>dct_test_bandfilter.py</a></b></td>
-				<td><code>❯ REPLACE-ME</code></td>
-			</tr>
-			</table>
-		</blockquote>
-	</details>
-	<details> <!-- BEMD Submodule -->
-		<summary><b>BEMD</b></summary>
-		<blockquote>
-			<table>
-			<tr>
-				<td><b><a href='https://github.com/jaccl17/imageland/blob/master/BEMD/BEMD_scratch.ipynb'>BEMD_scratch.ipynb</a></b></td>
-				<td><code>❯ REPLACE-ME</code></td>
-			</tr>
-			<tr>
-				<td><b><a href='https://github.com/jaccl17/imageland/blob/master/BEMD/BEMD_test.py'>BEMD_test.py</a></b></td>
-				<td><code>❯ REPLACE-ME</code></td>
-			</tr>
-			<tr>
-				<td><b><a href='https://github.com/jaccl17/imageland/blob/master/BEMD/BEMD_test.ipynb'>BEMD_test.ipynb</a></b></td>
-				<td><code>❯ REPLACE-ME</code></td>
-			</tr>
-			<tr>
-				<td><b><a href='https://github.com/jaccl17/imageland/blob/master/BEMD/BEMD_test2.py'>BEMD_test2.py</a></b></td>
-				<td><code>❯ REPLACE-ME</code></td>
-			</tr>
-			</table>
-		</blockquote>
-	</details>
-	<details> <!-- FFT Submodule -->
-		<summary><b>FFT</b></summary>
-		<blockquote>
-			<table>
-			<tr>
-				<td><b><a href='https://github.com/jaccl17/imageland/blob/master/FFT/mask_generator_test.ipynb'>mask_generator_test.ipynb</a></b></td>
-				<td><code>❯ REPLACE-ME</code></td>
-			</tr>
-			<tr>
-				<td><b><a href='https://github.com/jaccl17/imageland/blob/master/FFT/fft_filter.py'>fft_filter.py</a></b></td>
-				<td><code>❯ REPLACE-ME</code></td>
-			</tr>
-			<tr>
-				<td><b><a href='https://github.com/jaccl17/imageland/blob/master/FFT/fft_filter_test.py'>fft_filter_test.py</a></b></td>
-				<td><code>❯ REPLACE-ME</code></td>
-			</tr>
-			</table>
-		</blockquote>
-	</details>
-</details>
 
 ---
 ##  Getting Started
