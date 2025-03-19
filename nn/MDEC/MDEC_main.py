@@ -16,12 +16,17 @@ from datetime import datetime
 import tensorflow as tf
 from tensorflow.keras.layers import Layer, InputSpec, Dense, Input
 from tensorflow.keras.models import Model
-from tensorflow.keras.optimizers import SGD
+from tensorflow.keras.optimizers import SGD, Adam
 from tensorflow.keras.utils import plot_model
 from tensorflow.keras.datasets import mnist
+from tensorflow.keras.optimizers.schedules import CosineDecay
 
 from MDEC_autoencoder import ConvAutoencoder
 from MDEC_clusteringlayer import ClusteringLayer
+
+print(f'Tensorflow Version: {tf.__version__}')
+print(f'Numpy Version: {np.__version__}')
+print(f'Pandas Version: {pd.__version__}')
 
 ###############################################################################
 
@@ -115,7 +120,7 @@ class MDEC(object):
                 x, x,  # input and target are the same (for reconstruction)
                 epochs=epochs,
                 batch_size=batch_size,
-                shuffle=False,
+                shuffle=True,
                 validation_data=(x_val, x_val)
                 )
             if show_history:
@@ -150,8 +155,7 @@ class MDEC(object):
         q, _ = self.model.predict(x) # '_' ignores the second output of the model (ie: the autoencoder output); se the 'self.model' assignment above
         return q.argmax(axis=1) # returns the index of the highest probability output along the columns
     
-    def compile(self, gamma=0.1):
-        optimizer = SGD(learning_rate=0.01, momentum=0.99)
+    def compile(self, gamma=0.1, optimizer='adam'):
         self.model.compile(loss={'clustering': 'kld', 'reconstruction': 'mse'}, 
                            loss_weights=[gamma, 1], 
                            optimizer=optimizer)
@@ -276,7 +280,7 @@ if __name__ == "__main__":
     parser.add_argument('--gamma', default=0.1, help="Coefficient of clustering loss", type=float)
     # parser.add_argument('--epochs', default=10, help="Number of training epochs", type=int)
     parser.add_argument('--update_interval', default=140, help="Number of epochs (interval) between target distribution P updates", type=int)
-    parser.add_argument('--save_interval', default=5, help="Number of epochs (interval) between model saves", type=int)
+    parser.add_argument('--save_interval', default=140, help="Number of epochs (interval) between model saves", type=int)
     parser.add_argument('--tol', default=0.001, help="Model convergance tolerance", type=float)
     parser.add_argument('--ae_weights', default=None, help='This argument must be given')
     parser.add_argument('--save_dir', default=None, help="Location for logs and model weights")
@@ -290,6 +294,12 @@ if __name__ == "__main__":
         # print(x.shape)
         # print(y.shape)
 
+
+    # lr_schedule = CosineDecay(initial_learning_rate=0.005, decay_steps=1000, alpha=0.001)
+    # optimizer = SGD(learning_rate=lr_schedule, momentum=0.9)
+    optimizer = SGD(learning_rate=0.001, momentum=0.99)
+
+    # optimizer = Adam(learning_rate=0.001, use_ema=True, ema_momentum=0.9)
     
     mdec = MDEC(input_shape=x.shape[1:], bottleneck_size=10, n_clusters=args.n_clusters, batch_size=args.batch_size, save_dir=args.save_dir) # selects the last dimension of x (784) to by the input array size and 10 to be the bottleneck size
     mdec.pretrainer(x, x_val, batch_size=128, epochs=50, ae_weights=args.ae_weights, show_history=True)
@@ -297,7 +307,7 @@ if __name__ == "__main__":
     mdec.model.summary()
 
     t0 = time.time()
-    mdec.compile(gamma=args.gamma)
+    mdec.compile(gamma=args.gamma, optimizer=optimizer)
     y_pred = mdec.clustering(x, y=y, tol=args.tol, update_interval=args.update_interval, save_interval=args.save_interval, maxiter=args.maxiter)
     print(y)
     print(y_pred)
