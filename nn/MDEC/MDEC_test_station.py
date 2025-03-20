@@ -1,73 +1,56 @@
 # %%
-import logging, csv, os
-from pathlib import Path
-import time
+import logging, os
+import imageio
 logging.disable(logging.WARNING)
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
 
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-from sklearn.cluster import KMeans
-from sklearn import metrics
-from datetime import datetime
-from scipy.optimize import linear_sum_assignment
+# %%
+# clustering log path 
+# this is the only thing that needs to be changed, all metrics below will be pulled from the specified log folder
+log_path = 'clustering_log_2025-03-19_13:40'
+# %%
+# visualize how your model is performing in terms of accuracy and loss over time
+# this script can be ran during training, as the logs are updated in specified intervals (see MDEC_main.py)
+df = pd.read_csv(f'{log_path}/mdec_log_.csv')
 
-import tensorflow as tf
-print(tf.__version__)
-sys_details = tf.sysconfig.get_build_info()
-print(sys_details["cuda_version"])
-from tensorflow.keras.layers import Layer, InputSpec, Dense, Input
-from tensorflow.keras.models import Model
-from tensorflow.keras.optimizers import SGD
-from tensorflow.keras.utils import plot_model
-from tensorflow.keras.datasets import mnist
+plt.figure(figsize=(14, 5))
+plt.suptitle('Accuracy Metrics and Training Loss')
 
-from MDEC_autoencoder import ConvAutoencoder
-from MDEC_clusteringlayer import ClusteringLayer
-from MDEC_main import JDEC, load_mnist 
-# %%
-def align_cluster_labels(y_true, y_pred):
-    cm = metrics.confusion_matrix(y_true, y_pred)
-    row_ind, col_ind = linear_sum_assignment(-cm)
-    label_map = {row: col for row, col in zip(row_ind, col_ind)}
-    return np.vectorize(label_map.get)(y_pred)
-# %%
-# 1. Define the SAME model architecture
-input_shape = (28, 28, 1)  # Must match original training shape
-bottleneck_size = 10         # Must match original training
-n_clusters = 10              # Must match original training
+plt.subplot(2, 3, 1)
+plt.plot(df.iloc[1:,0], df.iloc[1:,1],label=df.columns[1])
+plt.legend()
 
-# %%
-# 2. Instantiate JDEC with the SAME parameters
-jdec_new = JDEC(
-    input_shape=input_shape,
-    bottleneck_size=bottleneck_size,
-    n_clusters=n_clusters,
-    batch_size=128  # Match original batch size (optional for inference)
-)
-# %%
-# 3. Load the pretrained weights
-jdec_new.model.load_weights('/home/unitx/wabbit_playground/nn/clustering_log/JDEC_model.weights.h5')
+plt.subplot(2, 3, 2)
+plt.plot(df.iloc[1:,0], df.iloc[1:,2],label=df.columns[2])
+plt.legend()
 
-# %%
-# 4. Test on new data (example)
-x, y, x_val, y_val = load_mnist()  # Load new data (shape: [N, 28, 28, 1])
+plt.subplot(2, 3, 3)
+plt.plot(df.iloc[1:,0], df.iloc[1:,3],label=df.columns[3])
+plt.legend()
 
-# %%
-# Predict clusters
-cluster_labels = jdec_new.predict_clusters(x_val)
-aligned_labels = align_cluster_labels(y_val, cluster_labels)
-print("Cluster assignments:", cluster_labels)
-print("Validation assignments:", x_val.shape)
+for i in range (4,7):
+    plt.subplot(2, 3, i)
+    plt.plot(df.iloc[1:,0], df.iloc[1:,i],label=df.columns[i], color='r')
+    plt.legend()
 
-print(x_val.shape)
-print(aligned_labels.shape)
-# %%
-n = np.random.randint(0,x_val.shape[0])
-plt.imshow(x_val[n], cmap='gray')
+# plt.xlabel('iteration)
+# plt.ylabel('metric value')
 plt.show()
+# %%
+# turn clustering epoch iamges into a .gif file for easier visualization
+images = []
+png_files = [f for f in os.listdir(log_path) if f.endswith('.png')]
 
-print(f'This is the number {aligned_labels[n]}')
+png_files.sort(key=lambda x: int(
+    os.path.splitext(x)[0].split('_')[-1] # sorts files based on the integer at the end of the filename
+))
 
+for filename in png_files:
+    file_path = os.path.join(log_path, filename)
+    images.append(imageio.v2.imread(file_path))
+
+imageio.mimsave(f'{log_path}/clustering_progress.gif', images) # create gif
 # %%
