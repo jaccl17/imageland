@@ -300,7 +300,7 @@ if __name__ == "__main__":
 
     
     mdec = MDEC(input_shape=x.shape[1:], bottleneck_size=10, n_clusters=args.n_clusters, batch_size=args.batch_size) # selects the last dimension of x (784) to by the input array size and 10 to be the bottleneck size
-    mdec.pretrainer(x, x_val, batch_size=256, epochs=50, ae_weights=None, show_history=True)
+    mdec.pretrainer(x, x_val, batch_size=args.batch_size, epochs=50, ae_weights=None, show_history=True)
     plot_model(mdec.model, to_file='mdec_model.png', show_shapes=True)
     mdec.model.summary()
 

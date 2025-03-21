@@ -15,7 +15,7 @@ from datetime import datetime
 
 import tensorflow as tf
 from tensorflow.keras import losses
-from tensorflow.keras.layers import Flatten, Layer, InputSpec, Dense, Input, Reshape, Conv2D, Conv2DTranspose, Conv1D, Conv1DTranspose, MaxPool2D
+from tensorflow.keras.layers import Flatten, Layer, InputSpec, Dense, Input, Reshape, Conv2D, Conv2DTranspose, Conv1D, Conv1DTranspose, MaxPool2D, Dropout, BatchNormalization
 from tensorflow.keras.models import Model
 from tensorflow.keras.optimizers import SGD
 from tensorflow.keras.utils import plot_model
@@ -37,7 +37,7 @@ associate encoded images with 10 different labels (or clusters), each correspond
 The decoder component of the autoencoder is used to calculate reconstruction loss (a comparison between the input and reconstructed image), 
 which reinforces the algorithm to correctly cluster the images.
 
-Input
+Input:
     This function must take the arguments listed below to properly construct the model, but the input of the initialised model is a 2D image (+ channels)
     that is encoded into a bottleneck layer and decoded into a reconstructed image. 
 
@@ -80,6 +80,7 @@ def ConvAutoencoder(
         inputs = Input(shape=shape, name = 'en_input_layer')
         h = Conv2D(filters=32, kernel_size=kernel_size, activation='relu', padding=padding, strides=2, name='en_conv1')(inputs)
         h = Conv2D(filters=64, kernel_size=kernel_size, activation='relu', padding=padding, strides=2, name='en_conv2')(h)
+        # h = Dropout(0.3)(h)
         h = Conv2D(filters=128, kernel_size=3, activation='relu', padding=padding, strides=1, name='en_conv0')(h)
         h = Flatten(name='en_flatten')(h)
 
@@ -90,6 +91,7 @@ def ConvAutoencoder(
         h = Dense(downsized_shape*downsized_shape*128, activation='relu', name='decoder2')(bottleneck)
         h = Reshape((downsized_shape, downsized_shape, 128), name='de_reshape')(h)
         h = Conv2DTranspose(filters=64, kernel_size=3, activation='relu', padding=padding, strides=2, name='de_deconv1')(h)
+        # h = Dropout(0.3)(h)
         h = Conv2DTranspose(filters=32, kernel_size=kernel_size, activation='relu', padding=padding, strides=2, name='de_deconv2')(h)
         reconstruction = Conv2DTranspose(shape[2], kernel_size=kernel_size, activation='linear', padding=padding, name='reconstruction')(h)
 

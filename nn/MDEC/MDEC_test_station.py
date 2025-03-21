@@ -29,14 +29,16 @@ from MDEC_clusteringlayer import ClusteringLayer
 # %%
 # clustering log path 
 # this is the only thing that needs to be changed, all metrics below will be pulled from the specified log folder
-log_path = 'clustering_log_2025-03-21_00:15'
+log_path = 'clustering_log_2025-03-21_16:25'
 # %%
 # visualize how your model is performing in terms of accuracy and loss over time
 # this script can be ran during training, as the logs are updated in specified intervals (see MDEC_main.py)
 df = pd.read_csv(f'{log_path}/mdec_log_.csv')
 
-plt.figure(figsize=(14, 5))
-plt.suptitle('Accuracy Metrics and Training Loss')
+fig = plt.figure(figsize=(14, 6))
+fig.suptitle('Accuracy Metrics and Training Loss', fontsize=20)
+fig.supxlabel('iteration', fontsize=16)
+fig.supylabel('metric value', fontsize=16)
 
 plt.subplot(2, 3, 1)
 plt.plot(df.iloc[1:,0], df.iloc[1:,1],label=df.columns[1])
@@ -55,8 +57,7 @@ for i in range (4,7):
     plt.plot(df.iloc[1:,0], df.iloc[1:,i],label=df.columns[i], color='r')
     plt.legend()
 
-# plt.xlabel('iteration)
-# plt.ylabel('metric value')
+plt.tight_layout()
 plt.show()
 # %%
 # turn clustering epoch iamges into a .gif file for easier visualization
@@ -75,3 +76,5 @@ imageio.mimsave(f'{log_path}/clustering_progress.gif', images) # create gif
 # %%
 # Try out the autoencoder!
 # run the current code block to train and test the performance of the autoencoder
+
+# %%
