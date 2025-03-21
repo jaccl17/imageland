@@ -1,44 +1,34 @@
-import logging, csv, os
-from pathlib import Path
-import time
-logging.disable(logging.WARNING)
-os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
+# Import libraries
 
 import numpy as np
-import pandas as pd
-import matplotlib.pyplot as plt
-from sklearn.cluster import KMeans
-from sklearn import metrics
-from datetime import datetime
-
 import tensorflow as tf
-from tensorflow.keras.layers import Layer, InputSpec, Dense, Input
-from tensorflow.keras.models import Model
-from tensorflow.keras.optimizers import SGD
-from tensorflow.keras.utils import plot_model
-from tensorflow.keras.datasets import mnist
-
-from MDEC_autoencoder import ConvAutoencoder
+from tensorflow.keras.layers import Layer, InputSpec
 
 ###############################################################################
 
 @tf.keras.utils.register_keras_serializable(package='CustomLayers')
+
 class ClusteringLayer(Layer):
     """
-    This is a custom layer that is used by the deep learning algorithm. It is like a 'Dense' or 'Output' layer
-    but serves it's own unique purpose. In this case, the 'Clustering' layer converts an input sample (llke an image)
-    into a soft label that assigns cluster labels to that image using Student's t-distribution.
+    The Clustering Layer
+
+    This is a custom layer that is used by the MDEC algorithm. It is like a 'Conv2D', 'Dense', or 'Output' layer but serves it's own unique purpose. 
+    In this case, the 'Clustering' layer is uses a soft assignment technique (Student's t-distribution) to assign the feature space (bottleneck layer) 
+    of an input tensor, to 1 of 10 clusters. Each cluster is defined by a centroid that moves to centralize all of the images meant to describe the cluster.
+
+    For example: All cluster centers are initialzed with K-means, a method that assigns centroids based on the feature space described by the pretrained 
+    autoencoder. When an image of the number '1' are encoded and shown to the clustering layer, the cluster will adjust it's centroids to better represent 
+    the feature space. A well-trained and converging model will move the cluster centroid associated with the number '1' closer to the encoded number '1'
+    example in the feature space.
 
     Input:
-        2D tensor with shape (n_samples, n_features)
-            This tensor consists of a batch (n_samples) of images, where each 2D (or higher dim.) image
-            is flattened into a 1D n_features vector.
+        2D tensor with shape (n_samples, n_features). This tensor consists of a batch (n_samples) of images, where each 2D (or higher dim.) image
+        is flattened into a 1D vector of length n_features.
     
     Output:
-        2D tensor with shape (n_samples, n_clusters)
-            The rows of the output tensor each correspond to the input image with the same index (n_samples index),
-            but rather than be associated with features, each row has an associated vector of probabilities that 
-            communicate the likely hood of that image being associated with each cluster
+        2D tensor with shape (n_samples, n_clusters). The rows of the output tensor each correspond to the input image with the same index (n_samples index),
+        but rather than be associated with features, each row has an associated vector of probabilities that communicate the likeliood of that image being 
+        associated with each cluster.
 
     Arguments:
         n_clusters: number of clusters
@@ -47,7 +37,9 @@ class ClusteringLayer(Layer):
         alpha: parameter in Student's t-distribution (default to 1.0)
     
     Example:
-        model.add(ClusteringLayer(n_clusters=10))
+        clustering_layer = ClusteringLayer(n_clusters=10, weights=clusterweights.weights.h5, name='clustering')(bottleneck)
+        # the bottleneck layer is the input tensor of shape (n_samples, n_features) that is passed to the clustering layer
+        # the clustering_layer variable is used to connect the clustering layer as an output to the bottleneck layer
     """
 
     def __init__(self, n_clusters, weights=None, alpha=1.0, **kwargs):
@@ -60,8 +52,10 @@ class ClusteringLayer(Layer):
         self.input_spec = InputSpec(ndim = 2)
 
     def build(self, input_shape):
+        # tf.print(f"Building ClusteringLayer with input shape: {input_shape}") # debug print
+        
         input_dim = input_shape[1]
-
+        
         self.input_spec = InputSpec(dtype=tf.keras.backend.floatx(), shape=(None, input_dim)) # batch size can be
         # anything and the second dimension must match the input dimensions
 
@@ -77,10 +71,15 @@ class ClusteringLayer(Layer):
 
     def call(self, inputs, **kwargs): # describes how the custom layer transforms its input into its output
         """
+        This a vital component of the clutering layer. Since the cluster centers are used as trainable weights, this trainable weights uses 
+        the Student's t-distribution to calculate the soft labels (q) for each sample in the input tensor. The soft labels are the associated probabilities
+        that each sample (ie an image mapped into a feature space) belongs to each cluster. The cluster centroids (and thereby cluster assignments) are
+        updated as the algorithm trains.
+
         Arguments:
             inputs: tensor containing data of shape (n_samples, n_features)
 
-        Returns:
+        Outputs:
             q: the soft label (Student's t-distribution) for all samples of shape (n_samples, n_clusters)
         """
         sq_distance = tf.reduce_sum(tf.square(tf.expand_dims(inputs, axis=1) - self.clusters), axis=2)
@@ -97,13 +96,13 @@ class ClusteringLayer(Layer):
 
         return q # returns (n_clusters, n_features)
     
-    def compute_output_shape(self, input_shape):
+    def compute_output_shape(self, input_shape): # used for debugging
         if not input_shape or len(input_shape) != 2:
              raise ValueError(f"Input shape must be of rank 2. Received: {input_shape}")
         
         return input_shape[0], self.n_clusters
     
-    def get_config(self):
+    def get_config(self): # used when the model is saved; ensures proper organization of arguments
         config = {
             'n_clusters': self.n_clusters,
             'alpha': self.alpha,
@@ -113,7 +112,7 @@ class ClusteringLayer(Layer):
         return {**base_config, **config}
 
     @classmethod
-    def from_config(cls, config):
+    def from_config(cls, config): # also used when model is saved, oragnizes arguments
         if config['initial_weights'] is not None:
             config['initial_weights'] = np.array(config['initial_weights'])
         return cls(**config)

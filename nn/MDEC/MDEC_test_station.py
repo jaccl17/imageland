@@ -1,16 +1,35 @@
 # %%
 import logging, os
-import imageio
+from pathlib import Path
+import time
 logging.disable(logging.WARNING)
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
 
 import numpy as np
+import imageio
+import tensorflow as tf
 import pandas as pd
 import matplotlib.pyplot as plt
+
+from sklearn.cluster import KMeans
+from scipy.optimize import linear_sum_assignment
+from sklearn.manifold import TSNE
+from sklearn import metrics
+from datetime import datetime
+
+from tensorflow.keras.layers import Layer, InputSpec, Dense, Input
+from tensorflow.keras.models import Model
+from tensorflow.keras.optimizers import SGD, Adam
+from tensorflow.keras.utils import plot_model
+from tensorflow.keras.datasets import mnist
+from tensorflow.keras.optimizers.schedules import CosineDecay
+
+from MDEC_autoencoder import ConvAutoencoder
+from MDEC_clusteringlayer import ClusteringLayer
 # %%
 # clustering log path 
 # this is the only thing that needs to be changed, all metrics below will be pulled from the specified log folder
-log_path = 'clustering_log_2025-03-19_13:40'
+log_path = 'clustering_log_2025-03-21_00:15'
 # %%
 # visualize how your model is performing in terms of accuracy and loss over time
 # this script can be ran during training, as the logs are updated in specified intervals (see MDEC_main.py)
@@ -54,3 +73,5 @@ for filename in png_files:
 
 imageio.mimsave(f'{log_path}/clustering_progress.gif', images) # create gif
 # %%
+# Try out the autoencoder!
+# run the current code block to train and test the performance of the autoencoder

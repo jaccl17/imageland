@@ -1,19 +1,20 @@
-import logging, csv, os
+import logging, os
 from pathlib import Path
 import time
 logging.disable(logging.WARNING)
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
 
 import numpy as np
+import tensorflow as tf
 import pandas as pd
 import matplotlib.pyplot as plt
+
 from sklearn.cluster import KMeans
 from scipy.optimize import linear_sum_assignment
 from sklearn.manifold import TSNE
 from sklearn import metrics
 from datetime import datetime
 
-import tensorflow as tf
 from tensorflow.keras.layers import Layer, InputSpec, Dense, Input
 from tensorflow.keras.models import Model
 from tensorflow.keras.optimizers import SGD, Adam
@@ -27,8 +28,19 @@ from MDEC_clusteringlayer import ClusteringLayer
 print(f'Tensorflow Version: {tf.__version__}')
 print(f'Numpy Version: {np.__version__}')
 print(f'Pandas Version: {pd.__version__}')
+num_gpus = len(tf.config.experimental.list_physical_devices('GPU'))
+print(f'Number of GPUs Available: {num_gpus}')
 
 ###############################################################################
+"""
+Useful Functions
+
+The following are functions used in the workflow of the MDEC algorithm, though are not directly related to the model itself. Their functions are
+briefly described below:
+
+prediction_accuracy
+    This function is based on teh Hungarian 
+"""
 
 def prediction_accuracy(y_true, y_pred):
     y_true = y_true.astype(np.int64)
@@ -39,7 +51,6 @@ def prediction_accuracy(y_true, y_pred):
     for i in range(y_pred.size):
         confusion_matrix[y_pred[i], y_true[i]] += 1
     
-    # Find optimal label alignment using Hungarian algorithm
     row_ind, col_ind = linear_sum_assignment(-confusion_matrix)
     return confusion_matrix[row_ind, col_ind].sum() / y_pred.size
 
@@ -78,7 +89,7 @@ class MDEC(object):
         self.save_dir = save_dir
 
         if self.save_dir is None:
-            self.save_dir = f'/home/unitx/wabbit_playground/nn/MDEC/clustering_log_{self.rn}'
+            self.save_dir = f'/home/jackwabbit/wabbit_world/imageland/nn/MDEC/clustering_log_{self.rn}'
 
         self.save_dir_path = Path(self.save_dir)
         self.save_dir_path.mkdir(parents=True, exist_ok=True)
@@ -99,7 +110,7 @@ class MDEC(object):
         # layer as the input to the clustering layer. bottleneck layer = feature space
         # THIS IS WHERE THE CLUSTERING HAPPENS 
 
-        self.model = Model(inputs=self.autoencoder.input, outputs=[clustering_layer, self.autoencoder.output])
+        self.model = Model(inputs=self.autoencoder.input, outputs=[clustering_layer, self.autoencoder.output], name='mdec_model')
         # this is another extremely important piece and this is where the DEC and IDEC differ. IDEC outputs both
         # the clustering layer AND the decoding portion of the autoencoder to calculate reconstruction loss to 
         # further optimize the model
@@ -295,14 +306,14 @@ if __name__ == "__main__":
         # print(y.shape)
 
 
-    # lr_schedule = CosineDecay(initial_learning_rate=0.005, decay_steps=1000, alpha=0.001)
-    # optimizer = SGD(learning_rate=lr_schedule, momentum=0.9)
-    optimizer = SGD(learning_rate=0.001, momentum=0.99)
+    lr_schedule = CosineDecay(initial_learning_rate=0.005, decay_steps=1000, alpha=0.001)
+    optimizer = SGD(learning_rate=lr_schedule, momentum=0.9)
+    # optimizer = SGD(learning_rate=0.001, momentum=0.99)
 
     # optimizer = Adam(learning_rate=0.001, use_ema=True, ema_momentum=0.9)
     
     mdec = MDEC(input_shape=x.shape[1:], bottleneck_size=10, n_clusters=args.n_clusters, batch_size=args.batch_size, save_dir=args.save_dir) # selects the last dimension of x (784) to by the input array size and 10 to be the bottleneck size
-    mdec.pretrainer(x, x_val, batch_size=128, epochs=50, ae_weights=args.ae_weights, show_history=True)
+    mdec.pretrainer(x, x_val, batch_size=args.batch_size, epochs=50, ae_weights=args.ae_weights, show_history=True)
     plot_model(mdec.model, to_file='mdec_model.png', show_shapes=True)
     mdec.model.summary()
 
