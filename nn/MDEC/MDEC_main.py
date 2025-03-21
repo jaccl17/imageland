@@ -39,7 +39,14 @@ The following are functions used in the workflow of the MDEC algorithm, though a
 briefly described below:
 
 prediction_accuracy
-    This function is based on teh Hungarian 
+    This function calculates the accuracy of the model's predictions using the Hungarian algorithm. Because the model is unsupervised, there is 
+    not guarantee that a cluster label will be assigned to the same number as the true label (eg: cluster index 1 might actually describe the number 5).
+    The Hungarian algorithm uses a confusion matrix to determine the best possible mapping of cluster labels to true labels, and then calculates the
+    accuracy of the model based on this mapping.
+
+load_mnist
+    This function loads the MNIST dataset from the tensorflow.keras.datasets module. The dataset is loaded as a tuple of numpy arrays, which are then
+    normalized and reshaped to be used in the MDEC algorithm. The function returns the training and validation sets as well as their labels.
 """
 
 def prediction_accuracy(y_true, y_pred):
