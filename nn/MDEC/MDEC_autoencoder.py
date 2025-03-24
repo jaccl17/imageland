@@ -65,7 +65,7 @@ def ConvAutoencoder(
         inputs = Input(shape=shape, name = 'en_input_layer')
         h = Conv2D(filters=32, kernel_size=kernel_size, activation='relu', padding=padding, strides=2, name='en_conv1')(inputs)
         h = Conv2D(filters=64, kernel_size=kernel_size, activation='relu', padding=padding, strides=2, name='en_conv2')(h)
-        h = MaxPooling2D(pool_size=2, name='en_pool')(h)  # Add MaxPooling2D
+        h = MaxPooling2D(pool_size=2, name='en_pool')(h)
         h = Conv2D(filters=128, kernel_size=3, activation='relu', padding='valid', strides=1, name='en_conv3')(h)
         h = Flatten(name='en_flatten')(h)
         # h = Dense(256, activation='relu', name='encoder1')(h)
@@ -78,7 +78,7 @@ def ConvAutoencoder(
         h = Dense(downsized_shape*downsized_shape*128, activation='relu', name='de_dense')(bottleneck)
         h = Reshape((downsized_shape, downsized_shape, 128), name='de_reshape')(h)
         h = Conv2DTranspose(filters=64, kernel_size=3, activation='relu', padding='valid', strides=2, name='de_deconv1')(h)
-        h = UpSampling2D(size=2, name='de_upsample')(h)  # Add UpSampling2D
+        h = UpSampling2D(size=2, name='de_upsample')(h)
         h = Conv2DTranspose(filters=32, kernel_size=kernel_size, activation='relu', padding=padding, strides=2, name='de_deconv2')(h)
         reconstruction = Conv2DTranspose(shape[2], kernel_size=kernel_size, activation='linear', padding=padding, name='reconstruction')(h)
 

@@ -26,7 +26,7 @@ from tensorflow.keras.optimizers.schedules import CosineDecay
 
 from MDEC_autoencoder import ConvAutoencoder
 from MDEC_clusteringlayer import ClusteringLayer
-from MDEC_main import load_mnist
+from MDEC_main import load_mnist, augmenter
 # %%
 # Clustering Log Path 
 # this is the only thing that needs to be changed, the following metrics will populate based on the log path
@@ -82,7 +82,7 @@ imageio.mimsave(f'{log_path}/clustering_progress.gif', images) # create gif
 # then run this cell to train the autoencoder. adjust model parameters to experiment!
 
 x_train, _, x_test, _ = load_mnist() # import train and test data
-
+x_train = tf.map_fn(lambda pic: augmenter(pic), x_train) # augment the test data
 
 autoencoder = ConvAutoencoder(shape=(28,28,1), kernel_size=5, padding='same', bottleneck_size=10)
 autoencoder.summary()
@@ -90,8 +90,8 @@ optimizer = Adam(learning_rate=0.001, use_ema=True, ema_momentum=0.99)
 # optimizer = SGD(learning_rate=0.001, momentum=0.9)
 autoencoder.compile(optimizer=optimizer, loss='mse')
 history = autoencoder.fit(x_train, x_train,
-                epochs =50,
-                batch_size = 128,
+                epochs=20,
+                batch_size=128,
                 shuffle=True,
                 validation_data=(x_test, x_test)
                 )
@@ -133,5 +133,9 @@ for i in range(len(n)):
     ax.get_xaxis().set_visible(False)
 
 plt.show()
+
+# %%
+n = np.random.randint(0,x_train.shape[0],5)
+plt.imshow(x_train[n[i]], cmap='gray')
 
 # %%

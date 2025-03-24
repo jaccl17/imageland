@@ -77,6 +77,13 @@ def load_mnist():
     # x = x.reshape((x.shape[0],-1)) # (70000, 28, 28) becomes (70000, 28*28) or (70000, 784)  # normalize as it does in DEC paper
     return x, y, x_val, y_val
 
+def augmenter(image):
+    image = tf.image.random_flip_left_right(image)  # random horix flip
+    image = tf.image.random_flip_up_down(image)  # random vert flip
+    image = tf.image.random_contrast(image, lower=0.8, upper=1.2)  # randomly adjust contrast
+    return image
+    
+
 """
 The Modernized Deep Embedded Clustering (MDEC) Algorithm
 
@@ -139,7 +146,7 @@ class MDEC(object):
 
         self.rn = datetime.now().strftime('%Y-%m-%d_%H:%M') # 'right now' timestamp for clustering log
 
-        self.save_dir = f'{self.save_dir}/clustering_log_{self.rn}'
+        self.save_dir = f'{self.save_dir}/logs/clustering_log_{self.rn}'
 
         self.save_dir_path = Path(self.save_dir)
         self.save_dir_path.mkdir(parents=True, exist_ok=True)
@@ -174,8 +181,8 @@ class MDEC(object):
 
         else:
             print('Begin Pretraining...')
-            optimizer = SGD(learning_rate=0.001, momentum=0.9)
-            # optimizer = Adam(learning_rate=0.001, use_ema=True, ema_momentum=0.9)
+            # optimizer = SGD(learning_rate=0.001, momentum=0.9)
+            optimizer = Adam(learning_rate=0.001, use_ema=True, ema_momentum=0.99)
             self.autoencoder.compile(optimizer=optimizer, loss='mse')
             history = self.autoencoder.fit(
                 x, x,  # input and target are the same (for reconstruction)
@@ -392,6 +399,7 @@ if __name__ == "__main__":
     parser.add_argument('--tol', default=0.001, help="Model convergance tolerance", type=float)
     parser.add_argument('--ae_weights', default=None, help="Path to pretrained autoencoder weights")
     parser.add_argument('--save_dir', default='nn/MDEC', help="Location for logs and model weights")
+    parser.add_argument('--augment', default=False, help="Augment training data", type=bool)
     args = parser.parse_args()
     print(args)
 
@@ -399,13 +407,16 @@ if __name__ == "__main__":
         x, y, x_val, _ = load_mnist()
         # print(x.shape)
         # print(y.shape)
+        # print(x_val.shape)
 
+    if args.augment:
+        x = tf.map_fn(lambda pic: augmenter(pic), x)
 
     lr_schedule = CosineDecay(initial_learning_rate=0.005, decay_steps=2000, alpha=0.001)
-    optimizer = SGD(learning_rate=lr_schedule, momentum=0.9)
+    # optimizer = SGD(learning_rate=lr_schedule, momentum=0.9)
     # optimizer = SGD(learning_rate=0.001, momentum=0.99)
 
-    # optimizer = Adam(learning_rate=lr_schedule, use_ema=True, ema_momentum=0.9)
+    optimizer = Adam(learning_rate=lr_schedule, use_ema=True, ema_momentum=0.9)
     
     mdec = MDEC(input_shape=x.shape[1:], n_clusters=args.n_clusters, batch_size=args.batch_size, save_dir=args.save_dir) # selects the last dimension of x (784) to by the input array size and 10 to be the bottleneck size
     mdec.pretrainer(x, x_val, batch_size=args.batch_size, epochs=args.ae_epochs, ae_weights=args.ae_weights, show_history=True)
