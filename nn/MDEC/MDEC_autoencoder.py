@@ -1,25 +1,10 @@
-import logging, csv, os
-from pathlib import Path
-import time
+import logging, os
 logging.disable(logging.WARNING)
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
 
-import numpy as np
-import pandas as pd
-import matplotlib.pyplot as plt
-import random
-from sklearn.cluster import KMeans
-from sklearn import metrics
-from sklearn.model_selection import train_test_split
-from datetime import datetime
-
 import tensorflow as tf
-from tensorflow.keras import losses
-from tensorflow.keras.layers import Flatten, Layer, InputSpec, Dense, Input, Reshape, Conv2D, Conv2DTranspose, Conv1D, Conv1DTranspose, MaxPool2D, Dropout, BatchNormalization
+from tensorflow.keras.layers import Flatten, Dense, Input, Reshape, Conv2D, Conv2DTranspose, MaxPooling2D, UpSampling2D, Dropout, BatchNormalization
 from tensorflow.keras.models import Model
-from tensorflow.keras.optimizers import SGD
-from tensorflow.keras.utils import plot_model
-from tensorflow.keras.datasets import mnist, fashion_mnist
 
 ###############################################################################
 
@@ -55,7 +40,7 @@ Arguments:
 
 Example:
     autoencoder = ConvAutoencoder(shape = (28,28,1), kernel_size=3, padding = 'same', bottle_neck_size = 10)
-    autoencoder.compile(optimizer='adam', loss=losses.MeanSquaredError())
+    autoencoder.compile(optimizer='adam', loss='mse')
     history = autoencoder.fit(x_train, x_train,
                     epochs = 20,
                     shuffle=True,
@@ -75,23 +60,25 @@ def ConvAutoencoder(
     if shape[0] != shape[1]:
         raise Exception("Please ensure a square input tensor (ie: Height = Width)")
     else:
-        downsized_shape = int(shape[0]/4)
+        downsized_shape = int(shape[0]/8)
 
         inputs = Input(shape=shape, name = 'en_input_layer')
         h = Conv2D(filters=32, kernel_size=kernel_size, activation='relu', padding=padding, strides=2, name='en_conv1')(inputs)
         h = Conv2D(filters=64, kernel_size=kernel_size, activation='relu', padding=padding, strides=2, name='en_conv2')(h)
-        # h = Dropout(0.3)(h)
-        h = Conv2D(filters=128, kernel_size=3, activation='relu', padding=padding, strides=1, name='en_conv0')(h)
+        h = MaxPooling2D(pool_size=2, name='en_pool')(h)  # Add MaxPooling2D
+        h = Conv2D(filters=128, kernel_size=3, activation='relu', padding='valid', strides=1, name='en_conv3')(h)
         h = Flatten(name='en_flatten')(h)
+        # h = Dense(256, activation='relu', name='encoder1')(h)
 
         # bottleneck
         bottleneck = Dense(bottleneck_size, activation='relu', name='bottleneck')(h)
 
         # decoder layers
-        h = Dense(downsized_shape*downsized_shape*128, activation='relu', name='decoder2')(bottleneck)
+        # h = Dense(256, activation='relu', name='decoder1')(bottleneck)
+        h = Dense(downsized_shape*downsized_shape*128, activation='relu', name='de_dense')(bottleneck)
         h = Reshape((downsized_shape, downsized_shape, 128), name='de_reshape')(h)
-        h = Conv2DTranspose(filters=64, kernel_size=3, activation='relu', padding=padding, strides=2, name='de_deconv1')(h)
-        # h = Dropout(0.3)(h)
+        h = Conv2DTranspose(filters=64, kernel_size=3, activation='relu', padding='valid', strides=2, name='de_deconv1')(h)
+        h = UpSampling2D(size=2, name='de_upsample')(h)  # Add UpSampling2D
         h = Conv2DTranspose(filters=32, kernel_size=kernel_size, activation='relu', padding=padding, strides=2, name='de_deconv2')(h)
         reconstruction = Conv2DTranspose(shape[2], kernel_size=kernel_size, activation='linear', padding=padding, name='reconstruction')(h)
 

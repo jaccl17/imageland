@@ -5,42 +5,42 @@ import tensorflow as tf
 from tensorflow.keras.layers import Layer, InputSpec
 
 ###############################################################################
+"""
+The Clustering Layer
+
+This is a custom layer that is used by the MDEC algorithm. It is like a 'Conv2D', 'Dense', or 'Output' layer but serves it's own unique purpose. 
+In this case, the 'Clustering' layer is uses a soft assignment technique (Student's t-distribution) to assign the feature space (bottleneck layer) 
+of an input tensor, to 1 of 10 clusters. Each cluster is defined by a centroid that moves to centralize all of the images meant to describe the cluster.
+
+For example: All cluster centers are initialzed with K-means, a method that assigns centroids based on the feature space described by the pretrained 
+autoencoder. When an image of the number '1' are encoded and shown to the clustering layer, the cluster will adjust it's centroids to better represent 
+the feature space. A well-trained and converging model will move the cluster centroid associated with the number '1' closer to the encoded number '1'
+example in the feature space.
+
+Input:
+    2D tensor with shape (n_samples, n_features). This tensor consists of a batch (n_samples) of images, where each 2D (or higher dim.) image
+    is flattened into a 1D vector of length n_features.
+
+Output:
+    2D tensor with shape (n_samples, n_clusters). The rows of the output tensor each correspond to the input image with the same index (n_samples index),
+    but rather than be associated with features, each row has an associated vector of probabilities that communicate the likeliood of that image being 
+    associated with each cluster.
+
+Arguments:
+    n_clusters: number of clusters
+    weights: numpy array with shape (n_clusters, n_features); each n_clusters row represents a cluster
+        in an n_features-dimensional feature space
+    alpha: parameter in Student's t-distribution (default to 1.0)
+
+Example:
+    clustering_layer = ClusteringLayer(n_clusters=10, weights=clusterweights.weights.h5, name='clustering')(bottleneck)
+    # the bottleneck layer is the input tensor of shape (n_samples, n_features) that is passed to the clustering layer
+    # the clustering_layer variable is used to connect the clustering layer as an output to the bottleneck layer
+"""
 
 @tf.keras.utils.register_keras_serializable(package='CustomLayers')
 
 class ClusteringLayer(Layer):
-    """
-    The Clustering Layer
-
-    This is a custom layer that is used by the MDEC algorithm. It is like a 'Conv2D', 'Dense', or 'Output' layer but serves it's own unique purpose. 
-    In this case, the 'Clustering' layer is uses a soft assignment technique (Student's t-distribution) to assign the feature space (bottleneck layer) 
-    of an input tensor, to 1 of 10 clusters. Each cluster is defined by a centroid that moves to centralize all of the images meant to describe the cluster.
-
-    For example: All cluster centers are initialzed with K-means, a method that assigns centroids based on the feature space described by the pretrained 
-    autoencoder. When an image of the number '1' are encoded and shown to the clustering layer, the cluster will adjust it's centroids to better represent 
-    the feature space. A well-trained and converging model will move the cluster centroid associated with the number '1' closer to the encoded number '1'
-    example in the feature space.
-
-    Input:
-        2D tensor with shape (n_samples, n_features). This tensor consists of a batch (n_samples) of images, where each 2D (or higher dim.) image
-        is flattened into a 1D vector of length n_features.
-    
-    Output:
-        2D tensor with shape (n_samples, n_clusters). The rows of the output tensor each correspond to the input image with the same index (n_samples index),
-        but rather than be associated with features, each row has an associated vector of probabilities that communicate the likeliood of that image being 
-        associated with each cluster.
-
-    Arguments:
-        n_clusters: number of clusters
-        weights: numpy array with shape (n_clusters, n_features); each n_clusters row represents a cluster
-            in an n_features-dimensional feature space
-        alpha: parameter in Student's t-distribution (default to 1.0)
-    
-    Example:
-        clustering_layer = ClusteringLayer(n_clusters=10, weights=clusterweights.weights.h5, name='clustering')(bottleneck)
-        # the bottleneck layer is the input tensor of shape (n_samples, n_features) that is passed to the clustering layer
-        # the clustering_layer variable is used to connect the clustering layer as an output to the bottleneck layer
-    """
 
     def __init__(self, n_clusters, weights=None, alpha=1.0, **kwargs):
         super(ClusteringLayer, self).__init__(**kwargs) # calls the constructor (Keras 'Layer') of this class 

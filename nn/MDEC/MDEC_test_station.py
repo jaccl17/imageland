@@ -26,10 +26,12 @@ from tensorflow.keras.optimizers.schedules import CosineDecay
 
 from MDEC_autoencoder import ConvAutoencoder
 from MDEC_clusteringlayer import ClusteringLayer
+from MDEC_main import load_mnist
 # %%
-# clustering log path 
-# this is the only thing that needs to be changed, all metrics below will be pulled from the specified log folder
-log_path = 'clustering_log_2025-03-21_16:25'
+# Clustering Log Path 
+# this is the only thing that needs to be changed, the following metrics will populate based on the log path
+# Note: this path is not required to try out the autoencoder
+log_path = 'clustering_log_2025-03-21_21:29'
 # %%
 # visualize how your model is performing in terms of accuracy and loss over time
 # this script can be ran during training, as the logs are updated in specified intervals (see MDEC_main.py)
@@ -60,7 +62,7 @@ for i in range (4,7):
 plt.tight_layout()
 plt.show()
 # %%
-# turn clustering epoch iamges into a .gif file for easier visualization
+# turn clustering epoch imagges into a .gif file for easier visualization!
 images = []
 png_files = [f for f in os.listdir(log_path) if f.endswith('.png')]
 
@@ -75,6 +77,61 @@ for filename in png_files:
 imageio.mimsave(f'{log_path}/clustering_progress.gif', images) # create gif
 # %%
 # Try out the autoencoder!
-# run the current code block to train and test the performance of the autoencoder
+
+# start by running the first cell in this file to import all req libraries 
+# then run this cell to train the autoencoder. adjust model parameters to experiment!
+
+x_train, _, x_test, _ = load_mnist() # import train and test data
+
+
+autoencoder = ConvAutoencoder(shape=(28,28,1), kernel_size=5, padding='same', bottleneck_size=10)
+autoencoder.summary()
+optimizer = Adam(learning_rate=0.001, use_ema=True, ema_momentum=0.99)
+# optimizer = SGD(learning_rate=0.001, momentum=0.9)
+autoencoder.compile(optimizer=optimizer, loss='mse')
+history = autoencoder.fit(x_train, x_train,
+                epochs =50,
+                batch_size = 128,
+                shuffle=True,
+                validation_data=(x_test, x_test)
+                )
+# autoencoder.save_weights('/home/jackwabbit/wabbit_world/imageland/nn/MDEC/test_bin/test_conv_ae.weights.h5')
+
+plt.plot(history.history['loss'], label='Training Loss')
+plt.plot(history.history['val_loss'], label='Validation Loss')
+plt.xlabel('Epoch')
+plt.ylabel('Loss')
+plt.title('Training and Validation Loss')
+plt.legend()
+plt.show()
+# %%
+# after running the previous cell, run this one to see how the autoencoder encodes the
+# a set of test images into a smaller representation and then decodes them back into their og size.
+
+encoded_pics = autoencoder.predict(x_test)
+decoded_pics = autoencoder.predict(encoded_pics)
+
+# %%
+# this block selects five random examples from 'x_test' set
+# and diplays the orginal and reconstructed images.
+
+# run this cell repeatedly to see different examples!
+
+n = np.random.randint(0,x_test.shape[0],5)
+plt.figure(figsize=(15, 4))
+for i in range(len(n)):
+    ax = plt.subplot(2, len(n), i + 1)
+    plt.title(f'original {n[i]}')
+    plt.imshow(x_test[n[i]], cmap='gray')
+    ax.get_yaxis().set_visible(False)
+    ax.get_xaxis().set_visible(False)
+
+    ax = plt.subplot(2, len(n), i + 1 + len(n))
+    plt.title(f'reconstructed {n[i]}')
+    plt.imshow(decoded_pics[n[i]], cmap='gray')
+    ax.get_yaxis().set_visible(False)
+    ax.get_xaxis().set_visible(False)
+
+plt.show()
 
 # %%

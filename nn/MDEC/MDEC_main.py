@@ -110,6 +110,15 @@ Arguments:
     save_dir: str, location for logs and model weights (default to None)
     **kwargs: any additional arguments to be passed to the model
 
+Example:
+    mdec = MDEC(input_shape=(28,28,1), n_clusters=10, batch_size=64, save_dir='MDEC_model')
+    mdec.pretrainer(x, x_val, batch_size=64, epochs=20, ae_weights=None, show_history=False)
+    plot_model(mdec.model, to_file='mdec_model.png', show_shapes=True)
+    mdec.model.summary()
+
+    mdec.compile(gamma=1.0, optimizer='adam')
+    y_pred = mdec.clustering(x, y=y, tol=1e-4, update_interval=100, save_interval=200, maxiter=2e4)
+    print('Clustering complete!')
 """
 
 class MDEC(object):
@@ -157,9 +166,6 @@ class MDEC(object):
         # further optimize the model
 
     def pretrainer(self, x, x_val, batch_size=128, epochs=20, ae_weights=None, show_history=False):
-        print('Begin Pretraining...')
-        # print(x.shape)
-
         t_0 = time.time()
 
         if ae_weights is not None:
@@ -167,7 +173,10 @@ class MDEC(object):
             print('Pretrained weights have been loaded into the Autoencoder')
 
         else:
-            self.autoencoder.compile(optimizer='adam', loss='mse')
+            print('Begin Pretraining...')
+            optimizer = SGD(learning_rate=0.001, momentum=0.9)
+            # optimizer = Adam(learning_rate=0.001, use_ema=True, ema_momentum=0.9)
+            self.autoencoder.compile(optimizer=optimizer, loss='mse')
             history = self.autoencoder.fit(
                 x, x,  # input and target are the same (for reconstruction)
                 epochs=epochs,
@@ -209,7 +218,7 @@ class MDEC(object):
     
     def compile(self, gamma=0.1, optimizer='adam'):
         self.model.compile(loss={'clustering': 'kld', 'reconstruction': 'mse'}, 
-                           loss_weights=[gamma, 1], 
+                           loss_weights=[gamma, 1-gamma], 
                            optimizer=optimizer)
 
     @staticmethod
@@ -330,8 +339,8 @@ class MDEC(object):
 
                     y_pred_last = np.copy(y_pred)
 
-                    # unique_clusters = np.unique(y_pred)
-                    # print(f"Unique clusters assigned: {unique_clusters}")
+                    unique_clusters = np.unique(y_pred)
+                    print(f"Unique clusters assigned: {unique_clusters}")
 
                 if i > 0 and delta_metric < tol:
                         print(f'delta: {delta_metric} < tol: {tol}')
@@ -392,11 +401,11 @@ if __name__ == "__main__":
         # print(y.shape)
 
 
-    lr_schedule = CosineDecay(initial_learning_rate=0.01, decay_steps=2000, alpha=0.001)
-    optimizer = SGD(learning_rate=lr_schedule, momentum=0.3)
+    lr_schedule = CosineDecay(initial_learning_rate=0.005, decay_steps=2000, alpha=0.001)
+    optimizer = SGD(learning_rate=lr_schedule, momentum=0.9)
     # optimizer = SGD(learning_rate=0.001, momentum=0.99)
 
-    # optimizer = Adam(learning_rate=0.001, use_ema=True, ema_momentum=0.9)
+    # optimizer = Adam(learning_rate=lr_schedule, use_ema=True, ema_momentum=0.9)
     
     mdec = MDEC(input_shape=x.shape[1:], n_clusters=args.n_clusters, batch_size=args.batch_size, save_dir=args.save_dir) # selects the last dimension of x (784) to by the input array size and 10 to be the bottleneck size
     mdec.pretrainer(x, x_val, batch_size=args.batch_size, epochs=args.ae_epochs, ae_weights=args.ae_weights, show_history=True)
