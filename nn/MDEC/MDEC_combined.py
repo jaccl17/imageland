@@ -638,7 +638,7 @@ if __name__ == "__main__":
     t1 = time.time() - t0
     print(f'Clustering time: {time.strftime("%H:%M:%S", time.gmtime(t1))}')
 
-    mdec.track_metrics(log_path=mdec.save_dir) # plot the metrics from the log file
+    mdec.track_metrics(log_path=mdec.save_dir) # plot metrics from the log file
     mdec.visualize_clustering(log_path=mdec.save_dir) # create a gif to visualize the clustering progress
 
 # %%
