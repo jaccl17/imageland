@@ -1,3 +1,15 @@
+# %% [markdown]
+# # MDEC Algorithm (combined)
+# Below is a scipt the conbines all of the MDEC components in one script. Please refer to
+# the imageland/nn/MDEC repo at https://github.com/jaccl17 for the normal workflow
+#
+# Please refer to individual code blocks for details
+
+# %% [markdown]
+# ## Import libraries
+
+# %%
+
 import logging, os
 from pathlib import Path
 import time
@@ -17,15 +29,12 @@ from sklearn.manifold import TSNE
 from sklearn import metrics
 from datetime import datetime
 
-from tensorflow.keras.layers import Layer, InputSpec, Dense, Input
+from tensorflow.keras.layers import Layer, InputSpec, Flatten, Dense, Input, Reshape, Conv2D, Conv2DTranspose, MaxPooling2D, UpSampling2D, BatchNormalization
 from tensorflow.keras.models import Model
 from tensorflow.keras.optimizers import SGD, Adam
 from tensorflow.keras.utils import plot_model
 from tensorflow.keras.datasets import mnist
 from tensorflow.keras.optimizers.schedules import CosineDecay
-
-from MDEC_autoencoder import ConvAutoencoder
-from MDEC_clusteringlayer import ClusteringLayer
 
 print(f'Tensorflow Version: {tf.__version__}')
 print(f'Numpy Version: {np.__version__}')
@@ -33,24 +42,24 @@ print(f'Pandas Version: {pd.__version__}')
 num_gpus = len(tf.config.experimental.list_physical_devices('GPU'))
 print(f'Number of GPUs Available: {num_gpus}')
 
-###############################################################################
-"""
-Useful Functions
+# %% [markdown]
+# # Useful Functions
+#
+# The following are functions used in the workflow of the MDEC algorithm, though are not directly related to the model itself. Their functions are
+# briefly described below:
+#
+#    prediction_accuracy
+# This function calculates the accuracy of the model's predictions using the Hungarian algorithm. Because the model is unsupervised, there is 
+# not guarantee that a cluster label will be assigned to the same number as the true label (eg: cluster index 1 might actually describe the number 5).
+# 
+# The Hungarian algorithm uses a confusion matrix to determine the best possible mapping of cluster labels to true labels, and then calculates the
+# accuracy of the model based on this mapping.
+#
+#    load_mnist
+# This function loads the MNIST dataset from the tensorflow.keras.datasets module. The dataset is loaded as a tuple of numpy arrays, which are then
+# normalized and reshaped to be used in the MDEC algorithm. The function returns the training and validation sets as well as their labels.
 
-The following are functions used in the workflow of the MDEC algorithm, though are not directly related to the model itself. Their functions are
-briefly described below:
-
-prediction_accuracy
-    This function calculates the accuracy of the model's predictions using the Hungarian algorithm. Because the model is unsupervised, there is 
-    not guarantee that a cluster label will be assigned to the same number as the true label (eg: cluster index 1 might actually describe the number 5).
-    The Hungarian algorithm uses a confusion matrix to determine the best possible mapping of cluster labels to true labels, and then calculates the
-    accuracy of the model based on this mapping.
-
-load_mnist
-    This function loads the MNIST dataset from the tensorflow.keras.datasets module. The dataset is loaded as a tuple of numpy arrays, which are then
-    normalized and reshaped to be used in the MDEC algorithm. The function returns the training and validation sets as well as their labels.
-"""
-
+# %%
 def prediction_accuracy(y_true, y_pred):
     y_true = y_true.astype(np.int64)
     assert y_pred.size == y_true.size
@@ -82,52 +91,234 @@ def augmenter(image):
     image = tf.image.random_flip_up_down(image)  # random vert flip
     image = tf.image.random_contrast(image, lower=0.8, upper=1.2)  # randomly adjust contrast
     return image
+
+# %% [markdown]
+# ## The Convolutional Autoencoder
+#
+# The following is a convolutional autoencoder that is used in the MDEC algorithm. This autoencoder applies and learns kernels with using convolutions
+# map to encode a higher dimensional input tensor (eg a 28x28x1-component 2D image) to a lower dimensional botleneck tensor (eg 10-component 1D vector). 
+# The function of an autoencoder is such that the bottleneck layer (or tensor of the same size) can be subsequently decoded to reconstruct the original
+# input image. Note that full-connected layers are used to compress and rebuild convolutional layers to and from the bottleneck layer. The autoencoder 
+# is symmetric, as is typical, which allows the model to learn encoding in decoding with the same tools.
+#
+# The autoencoder is pretrained, and the bottleneck layer is used for clustering (size of 10 corresponds to 10 clusters); the clustering layer learns to
+# associate encoded images with 10 different labels (or clusters), each corresponding to a common identifier in the input image (ie: a number from 0-9). 
+# The decoder component of the autoencoder is used to calculate reconstruction loss (a comparison between the input and reconstructed image), 
+# which reinforces the algorithm to correctly cluster the images.
+#
+# ### Input:
+# This function must take the arguments listed below to properly construct the model, but the input of the initialised model is a 2D image (+ channels)
+# that is encoded into a bottleneck layer and decoded into a reconstructed image.
+#
+# ### Output:
+# A model of autoencoder that can be trained and used for predictions. The output of the input image is a reconstructed image.
+# This model can operate in complete indepdence of the MDEC; a comented-out example is encluded below
+#
+# ### Arguments:
+# - shape: tuple, shape of the input tensor (default to (28, 28, 1))
+# - kernel_size: int, HxW size of the convolutional kernel (default to 5 for 5x5)
+# - padding: str, type of padding to apply to the convolutional layers (default to 'same')
+# - bottleneck_size: int, size of the bottleneck layer (default to 10)
+#
+# ### Example:
+#    autoencoder = ConvAutoencoder(shape = (28,28,1), kernel_size=3, padding = 'same', bottle_neck_size = 10)
+#    autoencoder.compile(optimizer='adam', loss='mse')
+#    history = autoencoder.fit(x_train, x_train,
+#                    epochs = 20,
+#                    shuffle=True,
+#                    validation_data=(x_test, x_test)
+#                    )
+#    autoencoder.save_weights('conv_ae.weights.h5')
+#    autoencoder.summary()
+
+# %%
+def ConvAutoencoder( 
+                shape = (28, 28, 1),
+                kernel_size = 5,
+                padding = 'same',
+                bottleneck_size = 10):
+    
+    # encoder layers
+    if shape[0] != shape[1]:
+        raise Exception("Please ensure a square input tensor (ie: Height = Width)")
+    else:
+        downsized_shape = int(shape[0]/8)
+
+        inputs = Input(shape=shape, name = 'en_input_layer')
+        h = Conv2D(filters=32, kernel_size=kernel_size, activation='relu', padding=padding, strides=2, name='en_conv1')(inputs)
+        h = Conv2D(filters=64, kernel_size=kernel_size, activation='relu', padding=padding, strides=2, name='en_conv2')(h)
+        h = MaxPooling2D(pool_size=2, name='en_pool')(h)
+        h = Conv2D(filters=128, kernel_size=3, activation='relu', padding='valid', strides=1, name='en_conv3')(h)
+        h = Flatten(name='en_flatten')(h)
+        # h = Dense(256, activation='relu', name='encoder1')(h)
+
+        # bottleneck
+        bottleneck = Dense(bottleneck_size, activation='relu', name='bottleneck')(h)
+
+        # decoder layers
+        # h = Dense(256, activation='relu', name='decoder1')(bottleneck)
+        h = Dense(downsized_shape*downsized_shape*128, activation='relu', name='de_dense')(bottleneck)
+        h = Reshape((downsized_shape, downsized_shape, 128), name='de_reshape')(h)
+        h = Conv2DTranspose(filters=64, kernel_size=3, activation='relu', padding='valid', strides=2, name='de_deconv1')(h)
+        h = UpSampling2D(size=2, name='de_upsample')(h)
+        h = Conv2DTranspose(filters=32, kernel_size=kernel_size, activation='relu', padding=padding, strides=2, name='de_deconv2')(h)
+        reconstruction = Conv2DTranspose(shape[2], kernel_size=kernel_size, activation='linear', padding=padding, name='reconstruction')(h)
+
+    return Model(inputs, reconstruction, name='autoencoder')
+
+# %%[markdown]
+# ## The Clustering Layer
+
+# This is a custom layer that is used by the MDEC algorithm. It is like a 'Conv2D', 'Dense', or 'Output' layer but serves it's own unique purpose. 
+# In this case, the 'Clustering' layer is uses a soft assignment technique (Student's t-distribution) to assign the feature space (bottleneck layer) 
+# of an input tensor, to 1 of 10 clusters. Each cluster is defined by a centroid that moves to centralize all of the images meant to describe the cluster.
+
+# For example: All cluster centers are initialzed with K-means, a method that assigns centroids based on the feature space described by the pretrained 
+# autoencoder. When an image of the number '1' are encoded and shown to the clustering layer, the cluster will adjust it's centroids to better represent 
+# the feature space. A well-trained and converging model will move the cluster centroid associated with the number '1' closer to the encoded number '1'
+# example in the feature space.
+
+# ### Input:
+# 2D tensor with shape (n_samples, n_features). This tensor consists of a batch (n_samples) of images, where each 2D (or higher dim.) image
+# is flattened into a 1D vector of length n_features.
+
+# ### Output:
+# 2D tensor with shape (n_samples, n_clusters). The rows of the output tensor each correspond to the input image with the same index (n_samples index),
+# but rather than be associated with features, each row has an associated vector of probabilities that communicate the likeliood of that image being 
+# associated with each cluster.
+
+# ### Arguments:
+# - n_clusters: number of clusters
+# - weights: numpy array with shape (n_clusters, n_features); each n_clusters row represents a cluster in an n_features-dimensional feature space
+# - alpha: parameter in Student's t-distribution (default to 1.0)
+
+# ### Example:
+#    clustering_layer = ClusteringLayer(n_clusters=10, weights=clusterweights.weights.h5, name='clustering')(bottleneck)
+#    # the bottleneck layer is the input tensor of shape (n_samples, n_features) that is passed to the clustering layer
+#    # the clustering_layer variable is used to connect the clustering layer as an output to the bottleneck layer
+
+# %%
+@tf.keras.utils.register_keras_serializable(package='CustomLayers')
+
+class ClusteringLayer(Layer):
+
+    def __init__(self, n_clusters, weights=None, alpha=1.0, **kwargs):
+        super(ClusteringLayer, self).__init__(**kwargs) # calls the constructor (Keras 'Layer') of this class 
+        # and ensures that all kwargs are properly handled
+
+        self.n_clusters = n_clusters # stores n_clusters as an instance variable
+        self.alpha = alpha # stores alpha for the Student's t-dist.
+        self.initial_weights = weights # stores initial cluster centers if provided
+        self.input_spec = InputSpec(ndim = 2)
+
+    def build(self, input_shape):
+        # tf.print(f"Building ClusteringLayer with input shape: {input_shape}") # debug print
+        
+        input_dim = input_shape[1]
+        
+        self.input_spec = InputSpec(dtype=tf.keras.backend.floatx(), shape=(None, input_dim)) # batch size can be
+        # anything and the second dimension must match the input dimensions
+
+        self.clusters = self.add_weight((self.n_clusters, input_dim), initializer='glorot_uniform', name='clusters')
+        # adds a trainable weight called 'clusters' to the layer
+
+        if self.initial_weights is not None:
+            self.set_weights(self.initial_weights) # updates all trainable weights in the layer (ie: clusters)
+            del self.initial_weights # deletes to save space
+        
+        self.built = True # sets the layer as 'built'; it is properly initialised and ready to be used
     
 
-"""
-The Modernized Deep Embedded Clustering (MDEC) Algorithm
+    def call(self, inputs, **kwargs): # describes how the custom layer transforms its input into its output
+        """
+        This a vital component of the clutering layer. Since the cluster centers are used as trainable weights, this trainable weights uses 
+        the Student's t-distribution to calculate the soft labels (q) for each sample in the input tensor. The soft labels are the associated probabilities
+        that each sample (ie an image mapped into a feature space) belongs to each cluster. The cluster centroids (and thereby cluster assignments) are
+        updated as the algorithm trains.
 
-The MDEC class unifies both the autoencoder and the clustering layer into an algoirthm for deep embedded clustering. It is a updated version of its DEC, IDEC, and DCEC 
-predecessors that offers better logging and visualisation tools, as well as an improved training workflow (which includes a validation set) and more debugging tools. 
-The algorithm begins with the optional to either pretrain the autoencoder, or input pretrained weights directly; the latter option allows for a reduced total training time,
-more consistant results, and easier debugging of the clustering component of the algorithm.
+        Arguments:
+            inputs: tensor containing data of shape (n_samples, n_features)
 
-The clustering function is next big component, and first creates the log file that tracks nmi and ari scores (accuracy metrics), as well as the accuracy from the Hungarian
-algorithm. Clustering loss (KL divergence between the target distribution and the soft labels) and reconstruction loss (difference between input and reconstructed image)
-are also tracked, alongside the total (combined) loss. Each tracked metric is associated with it's epoch and the metrics are taken at each update interval. The target
-distribution is used to improve the soft assignment (Student's t-distribution) by emphasizing high-confidence data-points, and normalizing the loss contributed by each
-centroid (prevents large clusters from overpowering feature space).
+        Outputs:
+            q: the soft label (Student's t-distribution) for all samples of shape (n_samples, n_clusters)
+        """
+        sq_distance = tf.reduce_sum(tf.square(tf.expand_dims(inputs, axis=1) - self.clusters), axis=2)
+        sq_distance = tf.maximum(sq_distance, 1e-10)  # prevent division by zero
 
-The algorithm uses a train_on_batch() approach opposed to a fit() approach, predominantly because train_on_batch() is more conducive to our multi-component loss model, 
-and avoids having the complicated dataset structure that fit() requires to learn from these losses. We also have more flexibility over batching with this function.
+        q = 1.0 / (1.0 + sq_distance / self.alpha)
+        # input dims become (n_samples, 1, n_features); clusters dims automatically shift to (1, n_clusters, n_features)
+        # subtraction broadcasts shape to (n_samples, n_clusters, n_features)
+        # sum over axis=2 sums along n_featues and reduces dimensions to (n_samples, n_clusters)
 
-This class also includes functions for loading mdec model weights, predicting cluster assignments, encoding images to the feature space, dynamically tracking loss and
-accuracy, as well as turning the cluster mapping into a gif to visualize the training process.
+        q **= (self.alpha + 1.0) / 2.0
+        q = q / tf.reduce_sum(q, axis=1, keepdims=True)
+        # sum over axis=1 sums along n_cluster, but keepdims maintains the summed dimension as 1 for normalization
 
-Input:
-    The algorithm takes in a series of images that each contain a notable feature that indicates how they will be clustered (eg a number from 0-9).
+        return q # returns (n_clusters, n_features)
+    
+    def compute_output_shape(self, input_shape): # used for debugging
+        if not input_shape or len(input_shape) != 2:
+             raise ValueError(f"Input shape must be of rank 2. Received: {input_shape}")
+        
+        return input_shape[0], self.n_clusters
+    
+    def get_config(self): # used when the model is saved; ensures proper organization of arguments
+        config = {
+            'n_clusters': self.n_clusters,
+            'alpha': self.alpha,
+            'initial_weights': self.initial_weights.tolist() if self.initial_weights is not None else None
+        }
+        base_config = super().get_config()
+        return {**base_config, **config}
 
-Output: 
-    The algorithm outputs a model that categorizes an input image into a learned cluster that corresponds to one of the true labels for the image set.
+    @classmethod
+    def from_config(cls, config): # also used when model is saved, oragnizes arguments
+        if config['initial_weights'] is not None:
+            config['initial_weights'] = np.array(config['initial_weights'])
+        return cls(**config)
 
-Arguments:
-    input_shape: tuple, shape of the input tensor (default to (28, 28, 1))
-    n_clusters: int, number of clusters to fit and the size of the bottleneck (default to 10)
-    batch_size: int, number of samples per batch (default to 256)
-    save_dir: str, location for logs and model weights (default to None)
-    **kwargs: any additional arguments to be passed to the model
+# %% [markdown]
+# ## The Modernized Deep Embedded Clustering (MDEC) Algorithm
 
-Example:
-    mdec = MDEC(input_shape=(28,28,1), n_clusters=10, batch_size=64, save_dir='MDEC_model')
-    mdec.pretrainer(x, x_val, batch_size=64, epochs=20, ae_weights=None, show_history=False)
-    plot_model(mdec.model, to_file='mdec_model.png', show_shapes=True)
-    mdec.model.summary()
-
-    mdec.compile(gamma=1.0, optimizer='adam')
-    y_pred = mdec.clustering(x, y=y, tol=1e-4, update_interval=100, save_interval=200, maxiter=2e4)
-    print('Clustering complete!')
-"""
-
+# The MDEC class unifies both the autoencoder and the clustering layer into an algoirthm for deep embedded clustering. It is a updated version of its DEC, IDEC, and DCEC 
+# predecessors that offers better logging and visualisation tools, as well as an improved training workflow (which includes a validation set) and more debugging tools. 
+# The algorithm begins with the optional to either pretrain the autoencoder, or input pretrained weights directly; the latter option allows for a reduced total training time,
+# more consistant results, and easier debugging of the clustering component of the algorithm.
+#
+# The clustering function is next big component, and first creates the log file that tracks nmi and ari scores (accuracy metrics), as well as the accuracy from the Hungarian
+# algorithm. Clustering loss (KL divergence between the target distribution and the soft labels) and reconstruction loss (difference between input and reconstructed image)
+# are also tracked, alongside the total (combined) loss. Each tracked metric is associated with it's epoch and the metrics are taken at each update interval. The target
+# distribution is used to improve the soft assignment (Student's t-distribution) by emphasizing high-confidence data-points, and normalizing the loss contributed by each
+# centroid (prevents large clusters from overpowering feature space).
+#
+# The algorithm uses a train_on_batch() approach opposed to a fit() approach, predominantly because train_on_batch() is more conducive to our multi-component loss model, 
+# and avoids having the complicated dataset structure that fit() requires to learn from these losses. We also have more flexibility over batching with this function.
+#
+# This class also includes functions for loading mdec model weights, predicting cluster assignments, encoding images to the feature space, dynamically tracking loss and
+# accuracy, as well as turning the cluster mapping into a gif to visualize the training process.
+#
+# ### Input:
+# The algorithm takes in a series of images that each contain a notable feature that indicates how they will be clustered (eg a number from 0-9).
+#
+# ### Output: 
+# The algorithm outputs a model that categorizes an input image into a learned cluster that corresponds to one of the true labels for the image set.
+#
+# ### Arguments:
+# - input_shape: tuple, shape of the input tensor (default to (28, 28, 1))
+# - n_clusters: int, number of clusters to fit and the size of the bottleneck (default to 10)
+# - batch_size: int, number of samples per batch (default to 256)
+# - save_dir: str, location for logs and model weights (default to None)
+# - **kwargs: any additional arguments to be passed to the model
+#
+# ### Example:
+#     mdec = MDEC(input_shape=(28,28,1), n_clusters=10, batch_size=64, save_dir='MDEC_model')
+#     mdec.pretrainer(x, x_val, batch_size=64, epochs=20, ae_weights=None, show_history=False)
+#     plot_model(mdec.model, to_file='mdec_model.png', show_shapes=True)
+#     mdec.model.summary()
+#     mdec.compile(gamma=1.0, optimizer='adam')
+#     y_pred = mdec.clustering(x, y=y, tol=1e-4, update_interval=100, save_interval=200, maxiter=2e4)
+#     print('Clustering complete!')
+# %%
 class MDEC(object):
     def __init__(self,
                  input_shape,
@@ -395,7 +586,10 @@ class MDEC(object):
             i += 1
 
         return y_pred
+# %% [markdown]
+# Main
 
+# %%
 if __name__ == "__main__":
 
     import argparse
@@ -446,3 +640,5 @@ if __name__ == "__main__":
 
     mdec.track_metrics(log_path=mdec.save_dir) # plot the metrics from the log file
     mdec.visualize_clustering(log_path=mdec.save_dir) # create a gif to visualize the clustering progress
+
+# %%
