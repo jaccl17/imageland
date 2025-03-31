@@ -128,6 +128,7 @@ decoded_pics = autoencoder.predict(x_test)
 
 n = np.random.randint(0,x_test.shape[0],5)
 plt.figure(figsize=(15, 4))
+
 for i in range(len(n)):
     ax = plt.subplot(2, len(n), i + 1)
     plt.title(f'original {n[i]}')
