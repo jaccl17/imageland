@@ -278,7 +278,7 @@ if __name__ == "__main__":
 
     # main vars
 
-    image_path1 = '/home/unitx/wabbit_playground/DCT/VS_watchband_02.png'
+    image_path1 = '/home/unitx/wabbit_playground/DCT/testcoin_crop.png'
     # image_path2 = 'pic02.png'
 
     S_D = 0
