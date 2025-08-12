@@ -83,7 +83,6 @@ def augmenter(image):
     image = tf.image.random_contrast(image, lower=0.8, upper=1.2)  # randomly adjust contrast
     return image
     
-
 """
 The Modernized Deep Embedded Clustering (MDEC) Algorithm
 
@@ -432,3 +431,4 @@ if __name__ == "__main__":
 
     mdec.track_metrics(log_path=mdec.save_dir) # plot the metrics from the log file
     mdec.visualize_clustering(log_path=mdec.save_dir) # create a gif to visualize the clustering progress
+
