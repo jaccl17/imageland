@@ -69,12 +69,14 @@ def load_mnist():
     x_val = x_val.astype('float32') / 255.0
     x = tf.expand_dims(x, axis = -1)
     x_val = tf.expand_dims(x_val, axis = -1)
+
     # y_train = tf.expand_dims(y_train, axis = -1)
     # x_test = tf.expand_dims(x_test, axis = -1)
     # y_test = tf.expand_dims(y_test, axis = -1)
     # x = np.concatenate((x_train, x_test), axis=0) # (60000, 28, 28) and (10000, 28, 28) become (70000, 28, 28) - this combines the train and test sets
     # y = np.concatenate((y_train, y_test), axis=0) # (60000, ) and (10000, ) become (70000, ) - this combines the train and test sets
     # x = x.reshape((x.shape[0],-1)) # (70000, 28, 28) becomes (70000, 28*28) or (70000, 784)  # normalize as it does in DEC paper
+    
     return x, y, x_val, y_val
 
 def augmenter(image):
