@@ -31,6 +31,7 @@ from MDEC_main import load_mnist, augmenter
 # Clustering Log Path 
 # this is the only thing that needs to be changed, the following metrics will populate based on the log path
 # Note: this path is not required to try out the autoencoder
+
 log_path = 'logs/clustering_log_2025-03-23_23:24'
 # %%
 # visualize how your model is performing in terms of accuracy and loss over time
